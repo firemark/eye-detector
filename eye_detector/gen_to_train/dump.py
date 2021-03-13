@@ -43,7 +43,7 @@ class Dumper():
 
         if i == 0:
             print("shape:", eyes[0].shape)
-            dump(eyes[0].shape, "middata/eye_to_train/x_shape")
+            dump(eyes[0].shape, "outdata/x_eye_shape")
 
         self.dump_to_file(eyes, self.EYE_LABEL, "eyes", i)
         count = len(eyes)

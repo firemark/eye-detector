@@ -3,7 +3,7 @@ from setuptools import setup
 from pathlib import Path
 
 setup(
-    name='eye_dector',
+    name='eye_detector',
     version='0.1',
     packages=['eye_detector'],
     license='MIT',

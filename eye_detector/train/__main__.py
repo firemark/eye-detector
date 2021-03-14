@@ -1,10 +1,10 @@
-import pickle
 from argparse import ArgumentParser
 
 from eye_detector.train.models import NAME_TO_MODEL
 from eye_detector.train.data import extract_results, prepare_data
 from eye_detector.train.results import compute_cross_val_score, print_info
 from eye_detector.train.select_model import train, predict
+from eye_detector.model import store_model
 
 parser = ArgumentParser(
     description="Train eye detection's model from generated data",
@@ -39,8 +39,5 @@ if __name__ == "__main__":
         scores.append((score, model_func.__name__, model))
 
     _, name, the_best_model = min(scores, key=lambda o: o[0])
-
     print("THE BEST MODEL:", name)
-
-    with open("eye.pickle", "wb") as fp:
-        pickle.dump(the_best_model, fp)
+    store_model(the_best_model)

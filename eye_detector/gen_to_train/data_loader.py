@@ -2,6 +2,7 @@ import os
 from glob import glob
 from itertools import chain
 from random import sample
+from math import ceil
 
 from numpy import newaxis, count_nonzero
 from sklearn.feature_extraction.image import PatchExtractor
@@ -48,7 +49,7 @@ class GenericLoader:
             paths = self.paths
         else:
             paths = sample(self.paths, k=n)
-        parts = int(parts * (len(paths) / n))
+        parts = ceil(parts * n / len(paths))
 
         return chain.from_iterable(
             self.extract_patches(

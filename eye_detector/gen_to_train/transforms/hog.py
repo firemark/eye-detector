@@ -4,7 +4,7 @@ from skimage.feature import hog
 class HogEye:
 
     def __init__(self):
-        self.pixels_per_cell = (8, 8)
+        self.pixels_per_cell = (16, 16)
         self.cells_per_block = (2, 2)
         self.orientations = 8
         self.block_norm = 'L2-Hys'

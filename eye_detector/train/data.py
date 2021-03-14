@@ -1,10 +1,10 @@
 from time import time
 from glob import glob
 
-
 from numpy import array
 from sklearn.model_selection import train_test_split
 from joblib import load
+
 
 def extract_results():
     print("EXTRACT RESULTS", end=" ", flush=True)

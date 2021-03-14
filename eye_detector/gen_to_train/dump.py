@@ -15,8 +15,8 @@ def recreate_directory():
 
 class Dumper():
     EYE_LABEL = 1
-    FACE_LABEL = 0
     ROOM_LABEL = 0
+    FACE_LABEL = 2
     LABELS = (EYE_LABEL, FACE_LABEL, ROOM_LABEL)
 
     def __init__(self, transform_eye, config):
@@ -63,12 +63,12 @@ class Dumper():
             multipler=config.room_multipler,
         )
 
-        #make_transform_and_dump(
-        #    name="face",
-        #    label=self.FACE_LABEL,
-        #    loader=self.face_loader,
-        #    multipler=0.01,
-        #)
+        make_transform_and_dump(
+            name="face",
+            label=self.FACE_LABEL,
+            loader=self.face_loader,
+            multipler=config.face_multipler,
+        )
 
     def dump_to_file(self, data, label, name, index):
         suffix = f"_{index:03d}_{name}"

@@ -38,6 +38,6 @@ if __name__ == "__main__":
         score = print_info(y_test, y_pred)
         scores.append((score, model_func.__name__, model))
 
-    _, name, the_best_model = min(scores, key=lambda o: o[0])
+    _, name, the_best_model = max(scores, key=lambda o: o[0])
     print("THE BEST MODEL:", name)
     store_model(the_best_model)

@@ -1,6 +1,7 @@
 from sklearn.linear_model import SGDClassifier
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.decomposition import PCA
+from sklearn.pipeline import Pipeline
 
 
 def sgd(x, y):

@@ -3,10 +3,10 @@ from skimage.feature import hog
 
 class HogEye:
 
-    def __init__(self):
-        self.pixels_per_cell = (16, 16)
+    def __init__(self, *, pixels_per_cell, orientations):
+        self.pixels_per_cell = pixels_per_cell
         self.cells_per_block = (2, 2)
-        self.orientations = 8
+        self.orientations = orientations
         self.block_norm = 'L2-Hys'
 
     def __call__(self, image, visualize=False):

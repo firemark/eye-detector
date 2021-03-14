@@ -65,7 +65,7 @@ class Dumper():
 
         make_transform_and_dump(
             name="face",
-            label=self.FACE_LABEL,
+            label=self.FACE_LABEL if config.face_as_unique_label else self.ROOM_LABEL,
             loader=self.face_loader,
             multipler=config.face_multipler,
         )

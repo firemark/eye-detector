@@ -1,6 +1,6 @@
 class HogWindow:
 
-    def __init__(self, hog, model, patch_size=None):
+    def __init__(self, *, hog, model, patch_size=None):
         self.hog = hog
         self.model = model
         self.patch_size = patch_size or (7, 7)

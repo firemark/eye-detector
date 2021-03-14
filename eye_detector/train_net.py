@@ -8,21 +8,18 @@ import torch.optim as optim
 from torchvision.datasets import ImageFolder
 from torchvision.utils import make_grid
 from torch.utils.data import DataLoader
-from facenet_pytorch import MTCNN
 
-from const import CLASSES
+from eye_detector.const import CLASSES
 
 NET_W = 128
-NET_H = 128
+NET_H = 64
 KERNEL_SIZE = 5
 
-mtcnn = MTCNN(image_size=NET_W, margin=20)
 transform = transforms.Compose([
-    mtcnn,
     transforms.Resize((NET_W, NET_H)),
     transforms.Grayscale(),
-    #transforms.ToTensor(),
-    #transforms.Normalize([0.5], [0.5]),
+    transforms.ToTensor(),
+    transforms.Normalize([0.5], [0.5]),
 ])
 
 
@@ -49,7 +46,7 @@ class Net(nn.Module):
 
 
 def train(net):
-    trainset = ImageFolder(root='data', transform=transform)
+    trainset = ImageFolder(root='middata/transformed_label', transform=transform)
     trainloader = DataLoader(trainset, batch_size=4, shuffle=True, num_workers=2)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
@@ -101,6 +98,6 @@ def test_data(net):
 if __name__ == "__main__":
     net = Net()
     train(net)
-    test_data(net)
-    torch.save(net.state_dict(), "./net.pth")
+    #test_data(net)
+    torch.save(net.state_dict(), "outdata/net.pth")
     print('Finished Training')

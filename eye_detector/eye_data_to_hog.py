@@ -12,17 +12,18 @@ from skimage.transform import resize
 from skimage.measure import label, regionprops
 from skimage.exposure import adjust_log
 
-from eye_catch import HogWindow, HogEye, compute_heatmap, crop_heatmap
-from const import CLASSES
+from eye_detector.model import load_window
+from eye_detector.heatmap import compute_heatmap, crop_heatmap
+from eye_detector.const import CLASSES
 
 
 SCALES = [1.5, 2.0, 2.5]
 
 
-def detect_and_generate_heatmap(img, hog_window, scale):
+def detect_and_generate_heatmap(img, window, scale):
     width, height = img.shape
     size = (int(width / scale), int(height / scale))
-    heatmap = compute_heatmap(img.shape, hog_window(img))
+    heatmap = compute_heatmap(img.shape, window(img))
     return resize(heatmap, (width, height))
 
 
@@ -33,10 +34,10 @@ def get_img_from_bbox(img, region):
     return adjust_log(eye)
 
 
-def generate_and_save(klass, filepath, hog_window):
+def generate_and_save(klass, filepath, window):
     img = rgb2gray(imread(filepath))
     heatmap = sum(
-        detect_and_generate_heatmap(img, hog_window, scale)
+        detect_and_generate_heatmap(img, window, scale)
         for scale in SCALES
     )
     croped = crop_heatmap(heatmap, 0.5)
@@ -50,31 +51,24 @@ def generate_and_save(klass, filepath, hog_window):
 
     name = basename(filepath)
     img_to_save = concatenate([left_eye, right_eye], axis=1)
-    imsave(f"hoged_data/{klass}/{name}", img_to_save)
+    imsave(f"middata/transformed_label/{klass}/{name}", img_to_save)
 
     return True
 
 
 if __name__ == "__main__":
-    rmtree("hoged_data", ignore_errors=True)
-    mkdir("hoged_data")
+    rmtree("middata/transformed_label", ignore_errors=True)
+    mkdir("middata/transformed_label")
 
-    with open("eye.pickle", "rb") as fp:
-        model = pickle.load(fp)
-
-    hog_window = HogWindow(
-        hog=HogEye(),
-        model=model,
-        patch_size=(7, 7),
-    )
+    window = load_window()
 
     tot = 0
     succ = 0
 
     for klass in CLASSES:
-        mkdir(f"hoged_data/{klass}")
-        for filepath in glob(f"data/{klass}/*.png"):
-             succ += generate_and_save(klass, filepath, hog_window)
+        mkdir(f"middata/transformed_label/{klass}")
+        for filepath in glob(f"indata/to_label/{klass}/*.png"):
+             succ += generate_and_save(klass, filepath, window)
              tot += 1
 
     print("tot", tot)

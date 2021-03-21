@@ -51,6 +51,7 @@ if __name__ == "__main__":
             detect_and_generate_heatmap(frame, window, scale)
             for scale in SCALES
         )
+        heatmap **= 2
         draw_heatmap(heatmap)
         print("time:", time() - t)
 

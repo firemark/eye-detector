@@ -5,7 +5,7 @@ from os import mkdir
 from os.path import basename
 import pickle
 
-from numpy import concatenate
+from numpy import concatenate, uint8
 from skimage.io import imread, imsave
 from skimage.color import rgb2gray
 from skimage.transform import resize
@@ -39,7 +39,7 @@ def generate_and_save(klass, filepath, window):
     heatmap = sum(
         detect_and_generate_heatmap(img, window, scale)
         for scale in SCALES
-    )
+    ) ** 2
     croped = crop_heatmap(heatmap, 0.5)
     regions = regionprops(label(croped))
 
@@ -50,8 +50,8 @@ def generate_and_save(klass, filepath, window):
     left_eye, right_eye = (get_img_from_bbox(img, r) for r in regions)
 
     name = basename(filepath)
-    img_to_save = concatenate([left_eye, right_eye], axis=1)
-    imsave(f"middata/transformed_label/{klass}/{name}", img_to_save)
+    img_to_save = concatenate([left_eye, right_eye], axis=1) * 0xFF
+    imsave(f"middata/transformed_label/{klass}/{name}", img_to_save.astype(uint8))
 
     return True
 
@@ -68,9 +68,16 @@ if __name__ == "__main__":
     for klass in CLASSES:
         mkdir(f"middata/transformed_label/{klass}")
         for filepath in glob(f"indata/to_label/{klass}/*.png"):
-             succ += generate_and_save(klass, filepath, window)
-             tot += 1
+            is_succ = generate_and_save(klass, filepath, window)
+            if is_succ:
+                print("O", flush=True, end="")
+                succ +=  1
+            else:
+                print("X", flush=True, end="")
+            tot += 1
 
+    print()
+    print("---")
     print("tot", tot)
     print("succ", succ)
 

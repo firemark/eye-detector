@@ -15,11 +15,17 @@ parser.add_argument(
     nargs="+",
     choices=list(NAME_TO_MODEL.keys())
 )
+parser.add_argument(
+    "-l", "--limit",
+    default=None,
+    type=int,
+)
 
 
 if __name__ == "__main__":
     args = parser.parse_args()
     models = [NAME_TO_MODEL[model_name] for model_name in args.models]
+    limit = args.limit
     scores = []
 
     x, y = extract_results()
@@ -32,7 +38,10 @@ if __name__ == "__main__":
         print("---", model_func.__name__)
         print("---")
         model = model_func(x_test, y_test)
-        train(model, x_train, y_train)
+        if limit is not None:
+            train(model, x_train[:limit], y_train[:limit])
+        else:
+            train(model, x_train, y_train)
 
         y_pred = predict(model, x_test)
         score = print_info(y_test, y_pred)

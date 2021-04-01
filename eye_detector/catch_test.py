@@ -14,8 +14,8 @@ from eye_detector.model import load_window
 
 def test(window, img_path, size=None):
     img = imread(img_path)
-    img = rgb2gray(img)
-    img = adjust_log(img)
+    img = img[:, :, 0:3]
+    #img = adjust_log(img)
     if size:
         img = resize(img, size)
     plt.show()

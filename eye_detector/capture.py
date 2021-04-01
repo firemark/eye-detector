@@ -18,8 +18,8 @@ def detect_and_generate_heatmap(frame, window, scale):
     height, width = frame.shape[0:2]
     size = (int(width / scale), int(height / scale))
     resized_frame = cv2.resize(frame, size)
-    gray = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2GRAY)
-    heatmap = compute_heatmap(gray.shape[::-1], window(gray))
+    rh, rw = resized_frame.shape[0:2]
+    heatmap = compute_heatmap((rw, rh), window(resized_frame))
     return resize(heatmap, (width, height))
 
 
@@ -39,7 +39,6 @@ def draw_heatmap(heatmap, color=None):
 
 
 if __name__ == "__main__":
-
     window = load_window()
     cap = init_win()
 

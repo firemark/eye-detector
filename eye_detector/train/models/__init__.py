@@ -1,4 +1,4 @@
-from eye_detector.train.models import sgd, svc, torch
+from eye_detector.train.models import sgd, svc, torch, prob
 
 MODELS = [
     svc.linear_svc,
@@ -7,6 +7,8 @@ MODELS = [
     sgd.pca_sgd,
     sgd.rbg_sgd,
     torch.torch,
+    prob.gauss_rbf,
+    prob.bayes,
 ]
 
 NAME_TO_MODEL = {

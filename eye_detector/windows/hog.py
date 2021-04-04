@@ -7,18 +7,20 @@ class HogWindow:
 
     def __call__(self, image):
         hoged = self.hog(image)
+        img_w, img_h = image.shape[0:2]
+        p1w = round(img_w * 0.01)
+        p1h = round(img_h * 0.01)
         for (x, y), window in self.sliding_window(hoged):
             to_predict = window.ravel()
-            to_predict = to_predict.reshape(1, to_predict.shape[0])
-            score = self.model.predict(to_predict)
-            if score[0] != 1:
-                continue
+            score = self.model.eye_probability(to_predict)
             w, h = self.hog.pixels_per_cell
-            x1 = x * w
-            y1 = y * h
-            x2 = x1 + window.shape[0] * w
-            y2 = y1 + window.shape[1] * h
-            yield slice(x1, x2), slice(y1, y2)
+            a = x * w
+            b = y * h
+            x1 = max(a - p1w, 0)
+            y1 = max(b - p1h, 0)
+            x2 = min(a + window.shape[0] * w + p1w, img_w)
+            y2 = min(b + window.shape[1] * h + p1h, img_h)
+            yield slice(x1, x2), slice(y1, y2), score
 
     def sliding_window(self, hoged):
         ww, hh = self.patch_size

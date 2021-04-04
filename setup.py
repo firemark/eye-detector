@@ -8,4 +8,7 @@ setup(
     packages=['eye_detector'],
     license='MIT',
     long_description=Path('README.md').read_text(),
+    scripts=[
+        'scripts/eye_detector',
+    ],
 )

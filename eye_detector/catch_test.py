@@ -1,5 +1,6 @@
 from time import time
 from glob import glob
+from random import shuffle
 
 import numpy as np
 from skimage.color import rgb2gray
@@ -43,7 +44,8 @@ def test(window, img_path, size=None):
 
 if __name__ == "__main__":
     window = load_window()
-    #test(window, "test/image.jpg", size=(640, 480))
 
-    for path in glob("indata/00000/*.png", recursive=True):
+    g = glob("indata/00000/*.png", recursive=True)
+    shuffle(g)
+    for path in g:
         test(window, path)

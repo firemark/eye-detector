@@ -1,6 +1,7 @@
 from eye_detector.gen_to_train.transforms.hog import HogEye
 from eye_detector.gen_to_train.transforms.lbp import LbpEye
 from eye_detector.gen_to_train.transforms.scale import ScaleEye
+from eye_detector.gen_to_train.transforms.sobel import SobelEye
 
 
 TRANSFORMS = {
@@ -12,4 +13,5 @@ TRANSFORMS = {
     "hog-16-16": HogEye(pixels_per_cell=(16, 16), orientations=16),
     "lbp": LbpEye(),
     "scale": ScaleEye(),
+    "sobel": SobelEye(),
 }

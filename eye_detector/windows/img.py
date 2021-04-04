@@ -10,15 +10,12 @@ class ImgWindow:
         for (x, y), window in self.sliding_window(image):
             to_predict = window.ravel()
             to_predict = to_predict.reshape(1, to_predict.shape[0])
-            score = self.model.predict(to_predict)
-            if score[0] != 1:
-                continue
-            step = self.step
-            x1 = x * step
-            y1 = y * step
-            x2 = x1 + window.shape[0] * step
-            y2 = y1 + window.shape[1] * step
-            yield slice(x1, x2), slice(y1, y2)
+            score = self.model.eye_probability(to_predict)
+            x1 = x
+            y1 = y
+            x2 = x + window.shape[0]
+            y2 = y + window.shape[1]
+            yield slice(x1, x2), slice(y1, y2), score
 
     def sliding_window(self, image):
         step = self.step

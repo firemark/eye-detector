@@ -2,9 +2,9 @@ import numpy as np
 
 
 def compute_heatmap(size, generator):
-    heatmap = np.zeros(size, int)
-    for window_slice in generator:
-        heatmap[window_slice] += 1
+    heatmap = np.zeros(size, float)
+    for *window_slice, score in generator:
+        heatmap[window_slice] += score
     return heatmap
 
 

@@ -1,5 +1,7 @@
 from argparse import ArgumentParser
 
+import joblib
+
 from eye_detector.train.models import NAME_TO_MODEL
 from eye_detector.train.data import extract_results, prepare_data
 from eye_detector.train.results import compute_cross_val_score, print_info
@@ -24,6 +26,7 @@ parser.add_argument(
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    eye_shape = joblib.load("outdata/x_eye_shape")
     models = [NAME_TO_MODEL[model_name] for model_name in args.models]
     limit = args.limit
     scores = []
@@ -37,7 +40,7 @@ if __name__ == "__main__":
         print("-" * 20)
         print("---", model_func.__name__)
         print("---")
-        model = model_func(x_test, y_test)
+        model = model_func(x_test, y_test, eye_shape)
         if limit is not None:
             train(model, x_train[:limit], y_train[:limit])
         else:

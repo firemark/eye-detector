@@ -7,7 +7,6 @@ EYE_DETECT_MODEL_PATH = "outdata/eye_detect.pickle"
 EYE_TRANSFORM_PATH = "outdata/eye_transform.pickle"
 
 
-
 def store_model(model):
     with open(EYE_DETECT_MODEL_PATH, "wb") as fp:
         pickle.dump(model, fp)

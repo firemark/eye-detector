@@ -32,6 +32,8 @@ class EyeDataLoader:
 
 
 class MrlEyeDataLoader(EyeDataLoader):
+    EYE_STATE_COL = 4
+    LIGHT_CONDITION_COL = 6
 
     def __init__(self, chunk_size):
         super().__init__(chunk_size)
@@ -41,7 +43,9 @@ class MrlEyeDataLoader(EyeDataLoader):
         for path in super().load():
             filename = os.path.basename(path).partition(".")[0]
             features = filename.split("_")
-            if features[3:6] != ["0", "1", "0"]:
+            if features[self.EYE_STATE_COL] != "1":
+                continue
+            if features[self.LIGHT_CONDITION_COL] != "1":
                 continue
             yield path
 

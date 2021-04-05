@@ -1,3 +1,5 @@
+from eye_detector.const import EYE_LABEL
+
 class BaseDecorator:
 
     def __init__(self, decoratee):
@@ -18,7 +20,7 @@ class ModelDecorator(BaseDecorator):
     def eye_probability(self, vector):
         vector = vector.reshape(1, -1)
         score = self.predict(vector)[0]
-        return max(1.0 - abs(score - 1.0), 0.0)
+        return 1.0 if score == EYE_LABEL else 0.0
 
 
 class ProbModelDecorator(BaseDecorator):

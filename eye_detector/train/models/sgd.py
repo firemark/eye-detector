@@ -14,7 +14,7 @@ def sgd(x, y, shape):
     ))
 
 
-def rbg_sgd(x, y, shape):
+def rbf_sgd(x, y, shape):
     rbf = RBFSampler()
     sgd = SGDClassifier(
         class_weight="balanced",

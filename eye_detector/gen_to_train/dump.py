@@ -3,8 +3,10 @@ from shutil import rmtree
 from contextlib import suppress
 
 from joblib import Parallel, delayed, dump
+from skimage.util import random_noise
 
 from eye_detector.gen_to_train import data_loader
+from eye_detector.const import EYE_LABEL, NOT_EYE_LABEL, FACE_LABEL
 
 
 def recreate_directory():
@@ -14,10 +16,6 @@ def recreate_directory():
 
 
 class Dumper():
-    EYE_LABEL = 1
-    ROOM_LABEL = 0
-    FACE_LABEL = 2
-    LABELS = (EYE_LABEL, FACE_LABEL, ROOM_LABEL)
 
     def __init__(self, transform_eye, config, eye_data_cls):
         self.transform_eye = transform_eye
@@ -37,35 +35,44 @@ class Dumper():
     def task(self, i, paths):
         config = self.config
         print(f"{i * config.chunk_size: 6d}...")
-        transform = self.transform_eye
+        def transform(img):
+            if config.noise > 1e-6:
+                img = random_noise(img, var=config.noise)
+            return self.transform_eye(img)
         load_image = self.eye_loader.load_image
-        eyes = [transform(load_image(path)) for path in paths]
+        eyes = [
+            transform(load_image(path))
+            for path in paths
+        ]
 
         if i == 0:
-            print("shape:", eyes[0].shape)
             dump(eyes[0].shape, "outdata/x_eye_shape")
 
-        self.dump_to_file(eyes, self.EYE_LABEL, "eyes", i)
+        self.dump_to_file(eyes, EYE_LABEL, "eyes", i)
         count = len(eyes)
         del eyes
 
         def make_transform_and_dump(name, label, loader, multipler):
+            if multipler < 1e-6:
+                return
             data = [
-                transform(image) for image
-                in loader.load(count, multipler)
+                transform(image)
+                for image in loader.load(count, multipler)
             ]
             self.dump_to_file(data, label, name, i)
 
         make_transform_and_dump(
             name="room",
-            label=self.ROOM_LABEL,
+            label=NOT_EYE_LABEL,
             loader=self.room_loader,
             multipler=config.room_multipler,
         )
 
+        face_as_unique_label = config.face_as_unique_label
+        face_label = FACE_LABEL if face_as_unique_label else NOT_EYE_LABEL
         make_transform_and_dump(
             name="face",
-            label=self.FACE_LABEL if config.face_as_unique_label else self.ROOM_LABEL,
+            label=face_label,
             loader=self.face_loader,
             multipler=config.face_multipler,
         )

@@ -21,6 +21,7 @@ parser.add_argument('--chunk-size', type=int, default=1000)
 parser.add_argument('-j', '--jobs', type=int, default=8)
 parser.add_argument('--room-multipler', type=float, default=1.0)
 parser.add_argument('--face-multipler', type=float, default=1.0)
+parser.add_argument('--noise', type=float, default=0.0)
 parser.add_argument(
     '-d', '--dataset',
     default='mrl',
@@ -43,6 +44,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.dataset == 'mrl' and args.image_transform != 'gray':
         raise AssertionError("MRL dataset support only gray images")
+
+    args.noise *= 0.01
 
     recreate_directory()
     image_transform = IMAGE_TRANSFORMS[args.image_transform]

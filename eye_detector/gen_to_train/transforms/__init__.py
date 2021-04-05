@@ -12,6 +12,9 @@ TRANSFORMS = {
     "hog-16-12": HogEye(pixels_per_cell=(16, 16), orientations=12),
     "hog-16-16": HogEye(pixels_per_cell=(16, 16), orientations=16),
     "lbp": LbpEye(),
-    "scale": ScaleEye(),
-    "sobel": SobelEye(),
+    "scale-16": ScaleEye(16, 16),
+    "scale-32": ScaleEye(32, 32),
+    "scale-64": ScaleEye(64, 64),
+    "sobel-32": SobelEye(32, 32),
+    "sobel-64": SobelEye(64, 64),
 }

@@ -5,7 +5,7 @@ from random import shuffle
 import numpy as np
 from skimage.color import rgb2gray
 from skimage.transform import resize
-from skimage.exposure import adjust_log
+from skimage.util import random_noise
 from skimage.io import imread
 from matplotlib import pyplot as plt
 from matplotlib.widgets import Button
@@ -17,9 +17,9 @@ from eye_detector.model import load_window
 def test(window, img_path, size=None):
     img = imread(img_path)
     img = img[:, :, 0:3]
-    #img = adjust_log(img)
     if size:
         img = resize(img, size)
+    img = random_noise(img, var=0.001)
 
     t = time()
     heatmap = compute_heatmap(img.shape, window(img))
@@ -43,10 +43,10 @@ class Index:
         ax_next = plt.axes([0.81, 0.05, 0.1, 0.075])
         ax_prev = plt.axes([0.7, 0.05, 0.1, 0.075])
 
-        btn_next = Button(ax_next, 'Next')
-        btn_next.on_clicked(self.next)
-        btn_prev = Button(ax_prev, 'Prev')
-        btn_prev.on_clicked(self.prev)
+        self.btn_next = Button(ax_next, 'Next')
+        self.btn_next.on_clicked(self.next)
+        self.btn_prev = Button(ax_prev, 'Prev')
+        self.btn_prev.on_clicked(self.prev)
 
 
     def next(self, event):

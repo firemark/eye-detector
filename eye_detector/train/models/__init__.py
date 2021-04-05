@@ -3,9 +3,11 @@ from eye_detector.train.models import sgd, svc, torch, prob
 MODELS = [
     svc.linear_svc,
     svc.svc,
+    svc.rbf_svc,
+    svc.pca_svc,
     sgd.sgd,
     sgd.pca_sgd,
-    sgd.rbg_sgd,
+    sgd.rbf_sgd,
     torch.torch,
     prob.gauss_rbf,
     prob.bayes,

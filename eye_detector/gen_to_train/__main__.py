@@ -12,6 +12,7 @@ from eye_detector.model import store_transform
 DATASETS = {
     'mrl': data_loader.MrlEyeDataLoader,
     'synth': data_loader.SynthEyeDataLoader,
+    'helen': data_loader.HelenEyeDataLoader,
 }
 
 parser = ArgumentParser(
@@ -42,8 +43,8 @@ parser.add_argument(
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    if args.dataset == 'mrl' and args.image_transform != 'gray':
-        raise AssertionError("MRL dataset support only gray images")
+    eye_data_cls = DATASETS[args.dataset]
+    eye_data_cls.assert_args(args)
 
     args.noise *= 0.01
 
@@ -51,7 +52,6 @@ if __name__ == "__main__":
     image_transform = IMAGE_TRANSFORMS[args.image_transform]
     transform = TRANSFORMS[args.transform]
     transform.set_image_transform(image_transform)
-    eye_data_cls = DATASETS[args.dataset]
     dumper = Dumper(transform, args, eye_data_cls)
 
     t = time()

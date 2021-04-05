@@ -30,6 +30,10 @@ class EyeDataLoader:
         if d:
             yield d
 
+    @classmethod
+    def assert_args(self, args):
+        pass
+
 
 class MrlEyeDataLoader(EyeDataLoader):
     EYE_STATE_COL = 4
@@ -38,6 +42,11 @@ class MrlEyeDataLoader(EyeDataLoader):
     def __init__(self, chunk_size):
         super().__init__(chunk_size)
         self.paths = glob("indata/mrlEyes_2018_01/**/*.png", recursive=True)
+
+    @classmethod
+    def assert_args(self, args):
+        if args.dataset == 'mrl' and args.image_transform != 'gray':
+            raise AssertionError("MRL dataset support only gray images")
 
     def load(self):
         for path in super().load():
@@ -64,6 +73,54 @@ class SynthEyeDataLoader(EyeDataLoader):
     @staticmethod
     def load_image(filepath):
         img = io.imread(filepath)[:, :, 0:3]
+        return resize(img, [64, 64])
+
+
+class HelenEyeDataLoader(EyeDataLoader):
+
+    def __init__(self, chunk_size):
+        super().__init__(chunk_size)
+        self.paths = list(self.get_paths_from_annotations())
+
+    def get_paths_from_annotations(self):
+        print("GENERATING PATHS TO IMAGES")
+        annotation_paths = glob("indata/helen/annotation/**/*.txt", recursive=True)
+        for path in annotation_paths:
+            with open(path) as file:
+                filename = file.readline().strip()
+                seekpath = f"indata/helen/**/{filename}.jpg"
+                filepaths = glob(seekpath, recursive=True)
+                if len(filepaths) == 0:
+                    # probably a test file. Skip.
+                    continue
+                lines = file.readlines()
+
+                # FUT standard
+                start = 41 + 17 + 28 * 2
+                r_eye_raw = lines[start:start + 20]
+                l_eye_raw = lines[start + 20:start + 40]
+                file.readlines(20 * 2)
+
+            filepath = filepaths[0]
+            yield filepath, self.get_bbox(r_eye_raw)
+            yield filepath, self.get_bbox(l_eye_raw)
+
+    @staticmethod
+    def get_bbox(raw):
+        gen = (o.partition(',') for o in raw)
+        xy = [(float(x), float(y)) for x, _, y in gen]
+        min_x = round(min(x for x, y in xy)) - 35
+        max_x = round(max(x for x, y in xy)) + 35
+        min_y = round(min(y for x, y in xy)) - 25
+        max_y = round(max(y for x, y in xy)) + 25
+        return (min_x, max_x, min_y, max_y)
+
+    @staticmethod
+    def load_image(data):
+        filepath, bbox = data
+        (x1, x2, y1, y2) = bbox
+        img = io.imread(filepath)
+        img = img[y1:y2, x1:x2]
         return resize(img, [64, 64])
 
 

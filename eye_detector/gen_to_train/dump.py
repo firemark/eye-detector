@@ -41,8 +41,9 @@ class Dumper():
             return self.transform_eye(img)
         load_image = self.eye_loader.load_image
         eyes = [
-            transform(load_image(path))
-            for path in paths
+            transform(img)
+            for img in (load_image(path) for path in paths)
+            if img is not None
         ]
 
         if i == 0:

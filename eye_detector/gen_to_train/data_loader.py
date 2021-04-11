@@ -1,7 +1,7 @@
 import os
 from glob import glob
 from itertools import chain
-from random import sample
+from random import sample, randint
 from math import ceil
 
 from numpy import newaxis, count_nonzero
@@ -104,16 +104,28 @@ class HelenEyeDataLoader(EyeDataLoader):
             filepath = filepaths[0]
             yield filepath, self.get_bbox(r_eye_raw)
             yield filepath, self.get_bbox(l_eye_raw)
+            yield filepath, self.get_bbox(r_eye_raw)
+            yield filepath, self.get_bbox(l_eye_raw)
+            yield filepath, self.get_bbox(r_eye_raw)
+            yield filepath, self.get_bbox(l_eye_raw)
 
     @staticmethod
     def get_bbox(raw):
         gen = (o.partition(',') for o in raw)
         xy = [(float(x), float(y)) for x, _, y in gen]
-        min_x = round(min(x for x, y in xy)) - 35
-        max_x = round(max(x for x, y in xy)) + 35
-        min_y = round(min(y for x, y in xy)) - 25
-        max_y = round(max(y for x, y in xy)) + 25
-        return (min_x, max_x, min_y, max_y)
+        min_x = round(min(x for x, y in xy)) - 15
+        max_x = round(max(x for x, y in xy)) + 15
+        min_y = round(min(y for x, y in xy)) - 15
+        max_y = round(max(y for x, y in xy)) + 15
+        dx = max_x - min_x
+        dy = max_y - min_y
+        dx1 = dx // 5
+        dy1 = dy // 5
+        cx = min_x + dx // 2 + randint(-dx1, dx1)
+        cy = min_y + dy // 2 + randint(-dy1, dy1)
+        dh = max(dx, dy) // 2
+
+        return (cx - dh, cx + dh, cy - dh, cy + dh)
 
     @staticmethod
     def load_image(data):

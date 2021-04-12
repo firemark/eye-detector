@@ -35,6 +35,28 @@ class EyeDataLoader:
         pass
 
 
+class MultiEyeDataLoader(EyeDataLoader):
+
+    def __init__(self, chunk_size, eye_loaders):
+        super().__init__(chunk_size)
+        self.eyes = eye_loaders
+
+    @classmethod
+    def assert_args(self, args):
+        for eye in self.eyes:
+            eye.assert_args(args)
+
+    def load(self):
+        for ind, eye in enumerate(self.eyes):
+            for path in eye.load():
+                yield ind, path
+
+    def load_image(self, filepath):
+        ind, path = filepath
+        eye = self.eyes[ind]
+        return eye.load_image(path)
+
+
 class MrlEyeDataLoader(EyeDataLoader):
     EYE_STATE_COL = 4
     LIGHT_CONDITION_COL = 6
@@ -45,7 +67,7 @@ class MrlEyeDataLoader(EyeDataLoader):
 
     @classmethod
     def assert_args(self, args):
-        if args.dataset == 'mrl' and args.image_transform != 'gray':
+        if args.image_transform != 'gray':
             raise AssertionError("MRL dataset support only gray images")
 
     def load(self):
@@ -102,21 +124,20 @@ class HelenEyeDataLoader(EyeDataLoader):
                 file.readlines(20 * 2)
 
             filepath = filepaths[0]
-            yield filepath, self.get_bbox(r_eye_raw)
-            yield filepath, self.get_bbox(l_eye_raw)
-            yield filepath, self.get_bbox(r_eye_raw)
-            yield filepath, self.get_bbox(l_eye_raw)
-            yield filepath, self.get_bbox(r_eye_raw)
-            yield filepath, self.get_bbox(l_eye_raw)
+            for eye in [r_eye_raw, l_eye_raw]:
+                for i in range(3):
+                    bbox = self.get_bbox(r_eye_raw)
+                    if bbox:
+                        yield filepath, bbox
 
     @staticmethod
     def get_bbox(raw):
         gen = (o.partition(',') for o in raw)
         xy = [(float(x), float(y)) for x, _, y in gen]
-        min_x = round(min(x for x, y in xy)) - 15
-        max_x = round(max(x for x, y in xy)) + 15
-        min_y = round(min(y for x, y in xy)) - 15
-        max_y = round(max(y for x, y in xy)) + 15
+        min_x = round(min(x for x, y in xy)) - 35
+        max_x = round(max(x for x, y in xy)) + 35
+        min_y = round(min(y for x, y in xy)) - 25
+        max_y = round(max(y for x, y in xy)) + 25
         dx = max_x - min_x
         dy = max_y - min_y
         dx1 = dx // 5
@@ -124,6 +145,9 @@ class HelenEyeDataLoader(EyeDataLoader):
         cx = min_x + dx // 2 + randint(-dx1, dx1)
         cy = min_y + dy // 2 + randint(-dy1, dy1)
         dh = max(dx, dy) // 2
+
+        if cx - dh < 0 or cy - dh < 0:
+            return None
 
         return (cx - dh, cx + dh, cy - dh, cy + dh)
 

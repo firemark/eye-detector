@@ -1,5 +1,6 @@
 from eye_detector.const import EYE_LABEL
 
+
 class BaseDecorator:
 
     def __init__(self, decoratee):

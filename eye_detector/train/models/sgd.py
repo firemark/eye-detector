@@ -14,6 +14,24 @@ def sgd(x, y, shape):
     ))
 
 
+def sgd_elastic(x, y, shape):
+    return ModelDecorator(SGDClassifier(
+        class_weight="balanced",
+        penalty="elasticnet",
+        tol=1e-4,
+        n_jobs=8,
+    ))
+
+
+def sgd_log(x, y, shape):
+    return ModelDecorator(SGDClassifier(
+        class_weight="balanced",
+        loss="log",
+        tol=1e-4,
+        n_jobs=8,
+    ))
+
+
 def rbf_sgd(x, y, shape):
     rbf = RBFSampler()
     sgd = SGDClassifier(

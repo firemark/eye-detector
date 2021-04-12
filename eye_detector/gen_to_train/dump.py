@@ -17,10 +17,10 @@ def recreate_directory():
 
 class Dumper():
 
-    def __init__(self, transform_eye, config, eye_data_cls):
+    def __init__(self, transform_eye, config, eye_loader):
         self.transform_eye = transform_eye
         self.config = config
-        self.eye_loader = eye_data_cls(self.config.chunk_size)
+        self.eye_loader = eye_loader
         self.room_loader = data_loader.RoomDataLoader()
         self.face_loader = data_loader.FaceDataLoader()
 

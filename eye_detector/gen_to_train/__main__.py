@@ -25,7 +25,8 @@ parser.add_argument('--face-multipler', type=float, default=1.0)
 parser.add_argument('--noise', type=float, default=0.0)
 parser.add_argument(
     '-d', '--dataset',
-    default='mrl',
+    dest='datasets',
+    nargs='+',
     choices=list(DATASETS.keys()),
 )
 parser.add_argument('--face-as-unique-label', default=False, action="store_true")
@@ -41,18 +42,34 @@ parser.add_argument(
 )
 
 
+def get_eye_data_loader(args):
+    datasets = args.datasets or ['mrl']
+    eye_classes = [DATASETS[cls] for cls in datasets]
+
+    if len(eye_classes) == 1:
+        eye_data_cls = eye_classes[0]
+        eye_data_cls.assert_args(args)
+        return eye_data_cls(args.chunk_size)
+
+    for cls in eye_classes:
+        cls.assert_args(args)
+
+    return data_loader.MultiEyeDataLoader(
+        chunk_size=args.chunk_size,
+        eye_loaders=[cls(args.chunk_size) for cls in eye_classes],
+    )
+
+
 if __name__ == "__main__":
     args = parser.parse_args()
-    eye_data_cls = DATASETS[args.dataset]
-    eye_data_cls.assert_args(args)
-
+    eye_data_loader = get_eye_data_loader(args)
     args.noise *= 0.01
 
     recreate_directory()
     image_transform = IMAGE_TRANSFORMS[args.image_transform]
     transform = TRANSFORMS[args.transform]
     transform.set_image_transform(image_transform)
-    dumper = Dumper(transform, args, eye_data_cls)
+    dumper = Dumper(transform, args, eye_data_loader)
 
     t = time()
     dumper.dump()

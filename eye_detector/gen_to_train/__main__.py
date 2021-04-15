@@ -13,6 +13,7 @@ DATASETS = {
     'mrl': data_loader.MrlEyeDataLoader,
     'synth': data_loader.SynthEyeDataLoader,
     'helen': data_loader.HelenEyeDataLoader,
+    'bioid': data_loader.BioIdEyeDataLoader,
 }
 
 parser = ArgumentParser(

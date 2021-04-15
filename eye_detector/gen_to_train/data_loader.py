@@ -86,6 +86,53 @@ class MrlEyeDataLoader(EyeDataLoader):
         return resize(gray2rgb(img), [64, 64])
 
 
+class BioIdEyeDataLoader(EyeDataLoader):
+    HEIGHT = 286
+    WIDTH = 384
+
+    def __init__(self, chunk_size):
+        super().__init__(chunk_size)
+        self.paths = glob("indata/bioid/*.pgm", recursive=True)
+
+    @classmethod
+    def assert_args(self, args):
+        if args.image_transform != 'gray':
+            raise AssertionError("BioId dataset support only gray images")
+
+    def load(self):
+        for path in super().load():
+            dirname = os.path.dirname(path)
+            filename = os.path.basename(path)
+            without_suffix = filename.partition('.')[0]
+            eye_info_path = os.path.join(dirname, without_suffix + ".eye")
+            with open(eye_info_path) as file:
+                line = file.readline() # skip first line
+                assert line == "#LX	LY	RX	RY\n"
+                eye_info = file.readline().split()
+            left_cord = eye_info[0:2]
+            right_cord = eye_info[2:4]
+            for cord in [left_cord, right_cord]:
+                for i in range(3):
+                    x, y = cord
+                    x = int(x) + randint(0, 5)
+                    y = int(y) + randint(0, 5)
+                    bbox = [
+                        max(x - 16, 0),
+                        min(x + 16, self.WIDTH - 1),
+                        max(y - 16, 0),
+                        min(y + 16, self.HEIGHT - 1),
+                    ]
+                    yield path, bbox
+
+    @classmethod
+    def load_image(cls, data):
+        filepath, bbox = data
+        (x1, x2, y1, y2) = bbox
+        img = io.imread(filepath)
+        img = img[y1:y2, x1:x2]
+        return resize(gray2rgb(img), [64, 64])
+
+
 class SynthEyeDataLoader(EyeDataLoader):
 
     def __init__(self, chunk_size):

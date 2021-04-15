@@ -79,6 +79,11 @@ class Dumper():
         )
 
     def dump_to_file(self, data, label, name, index):
-        suffix = f"_{index:03d}_{name}"
-        dump(data, f"middata/eye_to_train/x_{suffix}")
-        dump([label] * len(data), f"middata/eye_to_train/y_{suffix}")
+        name = f"{index:03d}_{name}"
+        dump(
+            {
+                "x": data,
+                "y": [label] * len(data),
+            },
+            f"middata/eye_to_train/{name}"
+        )

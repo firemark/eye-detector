@@ -11,10 +11,10 @@ def extract_results():
     t = time()
     x = []
     y = []
-    for x_path in sorted(glob("middata/eye_to_train/x*")):
-        x += [o.ravel() for o in load(x_path)]
-    for y_path in sorted(glob("middata/eye_to_train/y*")):
-        y += load(y_path)
+    for path in glob("middata/eye_to_train/*"):
+        data = load(path)
+        x += (o.ravel() for o in data["x"])
+        y += data["y"]
     print("time:", time() - t)
     return x, y
 

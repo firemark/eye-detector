@@ -2,6 +2,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.svm import LinearSVC, SVC
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
 from eye_detector.train.models.find import find_params
@@ -40,8 +41,10 @@ def rbf_svc(x, y, shape):
 
 def pca_svc(x, y, shape):
     pca = PCA()
+    scaler = StandardScaler()
 
     return ModelDecorator(Pipeline([
+        ('scaler', scaler),
         ('pca', pca),
         ('sgd', _svc(x, y)),
     ]))

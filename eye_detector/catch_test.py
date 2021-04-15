@@ -66,16 +66,16 @@ class Index:
         self.fig.suptitle(f"time: {tt:6f}s")
 
         self.axes[0,0].set_title("image")
-        self.axes[0,0].imshow(img, cmap="gray")
+        self.axes[0,0].imshow(img, cmap="hot")
 
         self.axes[1,0].set_title("heatmap")
         if max_h != 0:
-            self.axes[1, 0].imshow(heatmap / max_h , cmap="hot")
+            self.axes[1, 0].imshow(heatmap / max_h, cmap="hot")
         else:
             self.axes[1, 0].imshow(heatmap, cmap="hot")
 
         self.axes[1,1].set_title("regions")
-        self.axes[1,1].imshow(img * croped, cmap="gray")
+        self.axes[1,1].imshow(img * croped, cmap="hot")
         plt.draw()
 
 

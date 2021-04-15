@@ -7,13 +7,13 @@ class HogWindow:
 
     def __call__(self, image):
         hoged = self.hog(image)
+        w, h = self.hog.pixels_per_cell
         img_w, img_h = image.shape[0:2]
         p1w = round(img_w * 0.01)
         p1h = round(img_h * 0.01)
         for (x, y), window in self.sliding_window(hoged):
             to_predict = window.ravel()
             score = self.model.eye_probability(to_predict)
-            w, h = self.hog.pixels_per_cell
             a = x * w
             b = y * h
             x1 = max(a - p1w, 0)

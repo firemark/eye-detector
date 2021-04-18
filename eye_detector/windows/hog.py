@@ -9,8 +9,10 @@ class HogWindow:
         hoged = self.hog(image)
         w, h = self.hog.pixels_per_cell
         img_w, img_h = image.shape[0:2]
-        p1w = round(img_w * 0.01)
-        p1h = round(img_h * 0.01)
+        #p1w = round(img_w * 0.01)
+        #p1h = round(img_h * 0.01)
+        p1w = 0
+        p1h = 0
         for (x, y), window in self.sliding_window(hoged):
             to_predict = window.ravel()
             score = self.model.eye_probability(to_predict)

@@ -24,7 +24,7 @@ def test(window, img_path, size=None):
     t = time()
     heatmap = compute_heatmap(img.shape, window(img))
     heatmap **= 2
-    croped = crop_heatmap(heatmap)
+    croped = crop_heatmap(heatmap, limit_ratio=0.05)
     tt = time() - t
     return img, heatmap, croped, tt
 
@@ -60,7 +60,7 @@ class Index:
     def run_test(self):
         window = self.window
         img_path = self.images[self.ind]
-        img, heatmap, croped, tt = test(window, img_path)
+        img, heatmap, croped, tt = test(window, img_path, size=(320, 240))
         max_h = np.max(heatmap)
 
         self.fig.suptitle(f"time: {tt:6f}s")
@@ -80,7 +80,7 @@ class Index:
 
 
 if __name__ == "__main__":
-    window = load_window()
+    window = load_window('face')
     index = Index(window)
     index.setup_plot()
     index.run_test()

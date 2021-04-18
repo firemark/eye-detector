@@ -6,12 +6,12 @@ from sklearn.model_selection import train_test_split
 from joblib import load
 
 
-def extract_results():
+def extract_results(name):
     print("EXTRACT RESULTS", end=" ", flush=True)
     t = time()
     x = []
     y = []
-    for path in glob("middata/eye_to_train/*"):
+    for path in glob(f"middata/{name}_to_train/*"):
         data = load(path)
         x += (o.ravel() for o in data["x"])
         y += data["y"]

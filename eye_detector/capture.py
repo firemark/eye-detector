@@ -11,7 +11,7 @@ from eye_detector.model import load_window
 from eye_detector.cam_func import init_win, del_win
 from eye_detector.heatmap import compute_heatmap, crop_heatmap
 
-SCALES = [1.5, 2.0]
+SCALES = [4.0]
 
 
 def detect_and_generate_heatmap(frame, window, scale):
@@ -23,8 +23,8 @@ def detect_and_generate_heatmap(frame, window, scale):
     return resize(heatmap, (width, height))
 
 
-def draw_heatmap(heatmap, color=None):
-    croped = crop_heatmap(heatmap, 0.5)
+def draw_heatmap(heatmap, color=None, limit_ratio=0.5):
+    croped = crop_heatmap(heatmap, limit_ratio)
     for region in regionprops(label(croped)):
         if region.area < 100:
             continue
@@ -39,7 +39,7 @@ def draw_heatmap(heatmap, color=None):
 
 
 if __name__ == "__main__":
-    window = load_window()
+    face_window = load_window('face')
     cap = init_win()
 
     while True:
@@ -47,15 +47,15 @@ if __name__ == "__main__":
 
         t = time()
         heatmap = sum(
-            detect_and_generate_heatmap(frame, window, scale)
+            detect_and_generate_heatmap(frame, face_window, scale)
             for scale in SCALES
         )
         heatmap **= 2
-        draw_heatmap(heatmap)
+        draw_heatmap(heatmap, limit_ratio=0.2)
         print("time:", time() - t)
 
         cv2.imshow("frame", frame)
-        key = cv2.waitKey(500) & 0xFF
+        key = cv2.waitKey(50) & 0xFF
         if key == ord('q'):
             break
 

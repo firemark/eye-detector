@@ -12,6 +12,11 @@ parser = ArgumentParser(
     description="Train eye detection's model from generated data",
 )
 parser.add_argument(
+    "type",
+    metavar="TYPE",
+    choices=['FACE', 'EYE'],
+)
+parser.add_argument(
     "models",
     metavar="MODEL",
     nargs="+",
@@ -26,12 +31,13 @@ parser.add_argument(
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    eye_shape = joblib.load("outdata/x_eye_shape")
+    args.type = args.type.lower()
+    eye_shape = joblib.load(f"outdata/x_{args.type}_shape")
     models = [NAME_TO_MODEL[model_name] for model_name in args.models]
     limit = args.limit
     scores = []
 
-    x, y = extract_results()
+    x, y = extract_results(args.type)
     x_train, x_test, y_train, y_test = prepare_data(x, y)
 
     compute_cross_val_score(x_train, y_train)
@@ -52,4 +58,4 @@ if __name__ == "__main__":
 
     _, name, the_best_model = max(scores, key=lambda o: o[0])
     print("THE BEST MODEL:", name)
-    store_model(the_best_model)
+    store_model(the_best_model, args.type)

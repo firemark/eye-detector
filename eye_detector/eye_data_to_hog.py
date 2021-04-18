@@ -10,7 +10,6 @@ from skimage.io import imread, imsave
 from skimage.color import rgb2gray
 from skimage.transform import resize
 from skimage.measure import label, regionprops
-from skimage.exposure import adjust_log
 
 from eye_detector.model import load_window
 from eye_detector.heatmap import compute_heatmap, crop_heatmap
@@ -18,12 +17,13 @@ from eye_detector.const import CLASSES
 
 
 SCALES = [1.5, 2.0, 2.5]
+SCALES = [1.5]
 
 
 def detect_and_generate_heatmap(img, window, scale):
-    width, height = img.shape
+    width, height, _ = img.shape
     size = (int(width / scale), int(height / scale))
-    heatmap = compute_heatmap(img.shape, window(img))
+    heatmap = compute_heatmap((width, height), window(img))
     return resize(heatmap, (width, height))
 
 
@@ -31,11 +31,11 @@ def get_img_from_bbox(img, region):
     x1, y1, x2, y2 = region.bbox
     eye = img[x1:x2, y1:y2]
     eye = resize(eye, (64, 64))
-    return adjust_log(eye)
+    return eye
 
 
 def generate_and_save(klass, filepath, window):
-    img = rgb2gray(imread(filepath))
+    img = imread(filepath)[:, :, 0:3]
     heatmap = sum(
         detect_and_generate_heatmap(img, window, scale)
         for scale in SCALES
@@ -70,10 +70,10 @@ if __name__ == "__main__":
         for filepath in glob(f"indata/to_label/{klass}/*.png"):
             is_succ = generate_and_save(klass, filepath, window)
             if is_succ:
-                print("O", flush=True, end="")
+                print("\033[92m.\033[0m", flush=True, end="")
                 succ +=  1
             else:
-                print("X", flush=True, end="")
+                print("\033[91mX\033[0m", flush=True, end="")
             tot += 1
 
     print()

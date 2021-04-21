@@ -45,12 +45,12 @@ class Dumper():
     def transform(self, img):
         return self.transform_img(img)
 
-    def make_transform_and_dump(self, name, label, loader, multipler, count, i):
-        if multipler < 1e-6:
+    def make_transform_and_dump(self, name, label, loader, multiplier, count, i):
+        if multiplier < 1e-6:
             return
         data = [
             self.transform(image)
-            for image in loader.load(count, multipler)
+            for image in loader.load(count, multiplier)
         ]
         self.dump_to_file(data, label, name, i)
 
@@ -79,7 +79,7 @@ class EyeDumper(Dumper):
             ),
         ]
 
-    def transform(self):
+    def transform(self, img):
         noise = self.config.noise * 0.01
         if noise > 1e-6:
             img = random_noise(img, var=noise)
@@ -96,6 +96,6 @@ class FaceDumper(Dumper):
                 name='room',
                 label=NOT_EYE_LABEL,
                 loader=data_loader.RoomDataLoader(),
-                multipler=config.room_multiplier,
+                multiplier=config.room_multiplier,
             ),
         ]

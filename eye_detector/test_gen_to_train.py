@@ -8,6 +8,7 @@ from eye_detector.gen_to_train.data_loader import (
     MrlEyeDataLoader,
     HelenEyeDataLoader,
     BioIdEyeDataLoader,
+    HelenFaceDataLoader,
 )
 from eye_detector.gen_to_train.transforms import HogEye
 from eye_detector.gen_to_train.image_transforms import rgb2gray
@@ -16,7 +17,8 @@ from eye_detector.gen_to_train.image_transforms import rgb2gray
 if __name__ == "__main__":
     #eye_loader = MrlEyeDataLoader(chunk_size=1000)
     #eye_loader = HelenEyeDataLoader(chunk_size=1000)
-    eye_loader = BioIdEyeDataLoader(chunk_size=1000)
+    #eye_loader = BioIdEyeDataLoader(chunk_size=1000)
+    eye_loader = HelenFaceDataLoader(chunk_size=1000)
     hog = HogEye(pixels_per_cell=(8, 8), orientations=8)
     hog.set_image_transform(rgb2gray)
 

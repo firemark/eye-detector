@@ -4,7 +4,7 @@ import numpy as np
 def compute_heatmap(size, generator):
     heatmap = np.zeros(size, float)
     for x, y, score in generator:
-        heatmap[x, y] += score
+        heatmap[y, x] += score
     return heatmap
 
 

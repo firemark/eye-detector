@@ -34,6 +34,7 @@ def load_window(name, model=None, transform=None):
     if type(transform).__name__.startswith("Hog"):
         eye_shape = joblib.load(f"outdata/x_{name}_shape")
         img_shape = eye_shape[0:2]
+        print("SHAPE", name, eye_shape)
         return HogWindow(
             hog=transform,
             model=model,

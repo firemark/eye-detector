@@ -31,7 +31,7 @@ def test(windows, img_path):
 
 
 def face_detection(window, img):
-    heatmap = compute_heatmap(img.shape[0:2], window(img, scale=3.0))
+    heatmap = compute_heatmap(img.shape[0:2], window(img, scale=2))
     heatmap **= 2
     croped = crop_heatmap(heatmap, limit_ratio=0.05)
 
@@ -46,14 +46,14 @@ def eyes_detection(window, img, croped):
         return np.zeros(size, float), np.zeros(size, bool)
 
     x1, y1, x2, y2 = region.bbox
-    img = img[x1:x2, y1:y2]
-    shape = (x2 - x1, y2 - y1)
+    img = img[y1:y2, x1:x2]
+    shape = (y2 - y1, x2 - x1)
 
     heatmap = compute_heatmap(shape, window(img, scale=2.0))
     heatmap **= 2
 
     resized_heatmap = np.zeros(size, float)
-    resized_heatmap[x1:x2, y1:y2] = heatmap
+    resized_heatmap[y1:y2, x1:x2] = heatmap
 
     croped = crop_heatmap(resized_heatmap, limit_ratio=0.5)
 
@@ -98,7 +98,7 @@ class Index:
         eyes_max_h = np.max(eyes_heatmap)
 
         face_window, eyes_window = self.windows
-        fw, fh = face_window.get_window_size(scale=3.0)
+        fw, fh = face_window.get_window_size(scale=2.0)
         ew, eh = eyes_window.get_window_size(scale=2.0)
 
         face_rect = patches.Rectangle(

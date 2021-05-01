@@ -324,7 +324,6 @@ class FaceDataLoader(GenericLoader):
 
     def __init__(self):
         self.paths = glob("indata/face_data/**/*.png", recursive=True)
-        from pprint import pprint
 
     def load(self, n, parts):
         size = 64 * 64

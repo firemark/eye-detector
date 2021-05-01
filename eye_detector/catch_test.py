@@ -45,7 +45,7 @@ def eyes_detection(window, img, croped):
     except StopIteration:
         return np.zeros(size, float), np.zeros(size, bool)
 
-    x1, y1, x2, y2 = region.bbox
+    y1, x1, y2, x2 = region.bbox
     img = img[y1:y2, x1:x2]
     shape = (y2 - y1, x2 - x1)
 

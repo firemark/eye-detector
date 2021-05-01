@@ -30,7 +30,8 @@ def fill_argparse(parser, datasets):
 
 
 def recreate_directory(name):
-    with suppress(OSError): rmtree(f"middata/{name}")
+    with suppress(OSError):
+        rmtree(f"middata/{name}")
     mkdir(f"middata/{name}")
 
 

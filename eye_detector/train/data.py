@@ -1,7 +1,7 @@
 from time import time
 from glob import glob
 
-from numpy import array
+from numpy import array, count_nonzero
 from sklearn.model_selection import train_test_split
 from joblib import load
 
@@ -27,9 +27,11 @@ def prepare_data(x, y):
     yy = array(y)
     del y
     x_train, x_test, y_train, y_test = train_test_split(xx, yy, test_size=0.2)
+    print("time:", time() - t)
+    print("0 labels:", count_nonzero(yy == 0))
+    print("1 labels:", count_nonzero(yy == 1))
     del xx
     del yy
-    print("time:", time() - t)
     print("x_train", x_train.shape)
     print("y_train", y_train.shape)
     print("x_test", x_test.shape)

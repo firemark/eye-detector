@@ -3,6 +3,7 @@ from sys import argv
 from time import time
 
 import cv2
+import numpy as np
 
 from skimage.transform import resize
 from skimage.measure import label, regionprops
@@ -23,8 +24,24 @@ def detect_and_generate_heatmap(frame, window, scale):
     return resize(heatmap, (width, height))
 
 
-def draw_heatmap(heatmap, color=None, limit_ratio=0.5):
-    croped = crop_heatmap(heatmap, limit_ratio)
+def detect_eyes(frame, window, croped, scale):
+    size = frame.shape[0:2]
+
+    try:
+        region = next(r for r in regionprops(label(croped)))
+    except StopIteration:
+        return np.zeros(size, float)
+
+    x1, y1, x2, y2 = region.bbox
+    frame = frame[y1:y2, x1:x2]
+    eye_heatmap = detect_and_generate_heatmap(frame, window, scale)
+
+    resized_heatmap = np.zeros(size, float)
+    resized_heatmap[x1:x2, y1:y2] = eye_heatmap
+    return resized_heatmap
+
+
+def draw_heatmap(croped, color=None):
     for region in regionprops(label(croped)):
         if region.area < 100:
             continue
@@ -33,25 +50,39 @@ def draw_heatmap(heatmap, color=None, limit_ratio=0.5):
             frame,
             (x1, y1),
             (x2, y2),
-            color or (0, 0x50, 0xFF),
+            color or (0x00, 0x50, 0xFF),
             2,
         )
 
 
 if __name__ == "__main__":
     face_window = load_window('face')
+    eye_window = load_window('eye')
     cap = init_win()
+    i = 0
 
     while True:
         ret, frame = cap.read()
 
         t = time()
-        heatmap = sum(
-            detect_and_generate_heatmap(frame, face_window, scale)
-            for scale in SCALES
-        )
-        heatmap **= 2
-        draw_heatmap(heatmap, limit_ratio=0.2)
+
+        if i % 5 == 0:
+            face_heatmap = sum(
+                detect_and_generate_heatmap(frame, face_window, scale)
+                for scale in SCALES
+            )
+            face_heatmap **= 2
+            face_croped = crop_heatmap(face_heatmap, limit_ratio=0.2)
+            i = 1
+        else:
+            i += 1
+
+        eye_heatmap = detect_eyes(frame, eye_window, face_croped, scale=2.0)
+        eye_heatmap **= 2
+        eye_croped = crop_heatmap(eye_heatmap, limit_ratio=0.4)
+
+        draw_heatmap(face_croped, color=(0xFF, 0x50, 0x50))
+        draw_heatmap(eye_croped, color=(0x00, 0x50, 0xFF))
         print("time:", time() - t)
 
         cv2.imshow("frame", frame)

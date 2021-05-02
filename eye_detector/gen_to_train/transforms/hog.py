@@ -4,9 +4,9 @@ from eye_detector.gen_to_train.transforms.base import Transform
 
 class HogEye(Transform):
 
-    def __init__(self, *, pixels_per_cell, orientations):
+    def __init__(self, *, pixels_per_cell, orientations, cells_per_block=None):
         self.pixels_per_cell = pixels_per_cell
-        self.cells_per_block = (2, 2)
+        self.cells_per_block = cells_per_block or (2, 2)
         self.orientations = orientations
         self.block_norm = 'L2-Hys'
 

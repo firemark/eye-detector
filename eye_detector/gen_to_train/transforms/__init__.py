@@ -6,11 +6,12 @@ from eye_detector.gen_to_train.transforms.sobel import SobelEye
 
 TRANSFORMS = {
     "hog-8-8": HogEye(pixels_per_cell=(8, 8), orientations=8),
-    "hog-8-12": HogEye(pixels_per_cell=(8, 8), orientations=12),
-    "hog-8-16": HogEye(pixels_per_cell=(8, 8), orientations=16),
     "hog-16-8": HogEye(pixels_per_cell=(16, 16), orientations=8),
-    "hog-16-12": HogEye(pixels_per_cell=(16, 16), orientations=12),
-    "hog-16-16": HogEye(pixels_per_cell=(16, 16), orientations=16),
+    "hog-16-8-1": HogEye(
+        pixels_per_cell=(16, 16),
+        orientations=8,
+        cells_per_block=(1, 1),
+    ),
     "hog-24-8": HogEye(pixels_per_cell=(24, 24), orientations=8),
     "hog-32-8": HogEye(pixels_per_cell=(32, 32), orientations=8),
     "hog-64-8": HogEye(pixels_per_cell=(64, 64), orientations=8),

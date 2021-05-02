@@ -1,11 +1,9 @@
 from joblib import Parallel, delayed, dump
-from skimage.util import random_noise
 
-from eye_detector.gen_to_train import data_loader
-from eye_detector.const import EYE_LABEL, NOT_EYE_LABEL, FACE_LABEL
+from eye_detector.const import EYE_LABEL
 
 
-class Dumper():
+class Dumper:
     LOADER_NAME = 'img'
 
     def __init__(self, transform_img, config, loader):
@@ -63,39 +61,3 @@ class Dumper():
             },
             f"middata/{self.LOADER_NAME}_to_train/{name}"
         )
-
-
-class EyeDumper(Dumper):
-    LOADER_NAME = 'eye'
-
-    def __init__(self, transform_img, config, loader):
-        super().__init__(transform_img, config, loader)
-        self.another_loaders = [
-            dict(
-                name='face',
-                label=NOT_EYE_LABEL,
-                loader=data_loader.FaceDataLoader(),
-                multiplier=config.face_multiplier,
-            ),
-        ]
-
-    def transform(self, img):
-        noise = self.config.noise * 0.01
-        if noise > 1e-6:
-            img = random_noise(img, var=noise)
-        return self.transform_img(img)
-
-
-class FaceDumper(Dumper):
-    LOADER_NAME = 'face'
-
-    def __init__(self, transform_img, config, loader):
-        super().__init__(transform_img, config, loader)
-        self.another_loaders = [
-            dict(
-                name='room',
-                label=NOT_EYE_LABEL,
-                loader=data_loader.RoomDataLoader(),
-                multiplier=config.room_multiplier,
-            ),
-        ]

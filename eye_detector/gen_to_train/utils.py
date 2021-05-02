@@ -3,7 +3,7 @@ from shutil import rmtree
 from contextlib import suppress
 from time import time
 
-from eye_detector.gen_to_train.data_loader import MultiImgDataLoader
+from eye_detector.gen_to_train.data_loader.base import MultiImgDataLoader
 from eye_detector.gen_to_train.transforms import TRANSFORMS
 from eye_detector.gen_to_train.image_transforms import IMAGE_TRANSFORMS
 

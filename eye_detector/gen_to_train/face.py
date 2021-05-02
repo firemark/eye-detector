@@ -2,8 +2,8 @@
 from argparse import ArgumentParser
 
 from eye_detector.gen_to_train import utils
-from eye_detector.gen_to_train.dump import FaceDumper
-from eye_detector.gen_to_train import data_loader
+from eye_detector.gen_to_train.dump.face import FaceDumper
+from eye_detector.gen_to_train.data_loader import face as data_loader
 from eye_detector.model import store_transform
 
 DATASETS = {

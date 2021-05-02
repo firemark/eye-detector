@@ -74,10 +74,9 @@ class GenericLoader:
             for path in paths
         )
 
-    @classmethod
-    def extract_patches(cls, img, n):
+    def extract_patches(self, img, n):
         extractor = PatchExtractor(
-           patch_size=cls.PATCH_SIZE,
+           patch_size=self.patch_size,
            max_patches=n,
         )
         return extractor.transform(img[newaxis])

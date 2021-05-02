@@ -5,7 +5,6 @@ from eye_detector.gen_to_train.data_loader.base import GenericLoader
 
 
 class RoomDataLoader(GenericLoader):
-    PATCH_SIZE = (128, 128)
     ROOM_GROUPS = [
         "buffet",
         "bedroom",
@@ -14,6 +13,7 @@ class RoomDataLoader(GenericLoader):
     ]
 
     def __init__(self):
+        self.patch_size = (128, 128)
         self.paths = list(chain.from_iterable(
             glob(f"indata/outdoor_images/{group}/*.jpg")
             for group in self.ROOM_GROUPS

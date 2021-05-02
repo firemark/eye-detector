@@ -14,6 +14,9 @@ from matplotlib.widgets import Button
 from eye_detector.heatmap import compute_heatmap, crop_heatmap
 from eye_detector.model import load_window
 
+EYE_SCALE = 1.25
+FACE_SCALE = 2.5
+
 
 def test(windows, img_path):
     img = imread(img_path)
@@ -31,7 +34,7 @@ def test(windows, img_path):
 
 
 def face_detection(window, img):
-    heatmap = compute_heatmap(img.shape[0:2], window(img, scale=2))
+    heatmap = compute_heatmap(img.shape[0:2], window(img, scale=FACE_SCALE))
     heatmap **= 2
     croped = crop_heatmap(heatmap, limit_ratio=0.05)
 
@@ -49,7 +52,7 @@ def eyes_detection(window, img, croped):
     img = img[y1:y2, x1:x2]
     shape = (y2 - y1, x2 - x1)
 
-    heatmap = compute_heatmap(shape, window(img, scale=2.0))
+    heatmap = compute_heatmap(shape, window(img, scale=EYE_SCALE))
     heatmap **= 2
 
     resized_heatmap = np.zeros(size, float)
@@ -98,8 +101,8 @@ class Index:
         eyes_max_h = np.max(eyes_heatmap)
 
         face_window, eyes_window = self.windows
-        fw, fh = face_window.get_window_size(scale=2.0)
-        ew, eh = eyes_window.get_window_size(scale=2.0)
+        fw, fh = face_window.get_window_size(scale=FACE_SCALE)
+        ew, eh = eyes_window.get_window_size(scale=EYE_SCALE)
 
         face_rect = patches.Rectangle(
             (0, 0),

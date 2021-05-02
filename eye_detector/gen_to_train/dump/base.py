@@ -46,6 +46,7 @@ class Dumper:
     def make_transform_and_dump(self, name, label, loader, multiplier, count, i):
         if multiplier < 1e-6:
             return
+
         data = [
             self.transform(image)
             for image in loader.load(count, multiplier)

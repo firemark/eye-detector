@@ -26,14 +26,14 @@ class HogWindow:
             b = y * h
             x1 = int(max(a, 0))
             y1 = int(max(b, 0))
-            x2 = int(min(a + window.shape[1] * w, img_w))
-            y2 = int(min(b + window.shape[0] * h, img_h))
+            x2 = int(min(a + (window.shape[1] + 1) * w, img_w))
+            y2 = int(min(b + (window.shape[0] + 1) * h, img_h))
             yield slice(x1, x2), slice(y1, y2), score
 
     def get_window_size(self, scale=1.0):
         h, w = self.hog.pixels_per_cell
         ph, pw = self.patch_size
-        return pw * w * scale, ph * h * scale
+        return (pw + 1) * w * scale, (ph + 1) * h * scale
 
     def sliding_window(self, hoged):
         hh, ww = self.patch_size

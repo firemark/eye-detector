@@ -9,36 +9,7 @@ from skimage import io
 from eye_detector.gen_to_train.data_loader.base import ImgDataLoader
 
 
-class MrlEyeDataLoader(ImgDataLoader):
-    EYE_STATE_COL = 4
-    LIGHT_CONDITION_COL = 6
-
-    def __init__(self, chunk_size):
-        super().__init__(chunk_size)
-        self.paths = glob("indata/mrlEyes_2018_01/**/*.png", recursive=True)
-
-    @classmethod
-    def assert_args(self, args):
-        if args.image_transform != 'gray':
-            raise AssertionError("MRL dataset support only gray images")
-
-    def load(self):
-        for path in super().load():
-            filename = os.path.basename(path).partition(".")[0]
-            features = filename.split("_")
-            if features[self.EYE_STATE_COL] != "1":
-                continue
-            if features[self.LIGHT_CONDITION_COL] != "1":
-                continue
-            yield path
-
-    @staticmethod
-    def load_image(filepath):
-        img = io.imread(filepath)
-        return resize(gray2rgb(img), [64, 64])
-
-
-class BioIdEyeDataLoader(ImgDataLoader):
+class BioIdEyeNoseDataLoader(ImgDataLoader):
     HEIGHT = 286
     WIDTH = 384
 
@@ -63,41 +34,31 @@ class BioIdEyeDataLoader(ImgDataLoader):
                 eye_info = file.readline().split()
             left_cord = eye_info[0:2]
             right_cord = eye_info[2:4]
-            for cord in [left_cord, right_cord]:
-                for i in range(3):
-                    x, y = cord
-                    x = int(x) + randint(0, 5)
-                    y = int(y) + randint(0, 5)
-                    bbox = [
-                        max(x - 16, 0),
-                        min(x + 16, self.WIDTH - 1),
-                        max(y - 16, 0),
-                        min(y + 16, self.HEIGHT - 1),
-                    ]
-                    yield path, bbox
+            for i in range(3):
+                left_x, left_y = left_cord
+                right_x, right_y = right_cord
+                left_x = int(left_x) + randint(0, 10)
+                left_y = int(left_y) + randint(0, 5)
+                right_x = int(right_x) + randint(0, 10)
+                right_y = int(right_y) + randint(0, 5)
+                bbox = [
+                    max(right_x - 16, 0),
+                    min(left_x + 16, self.WIDTH - 1),
+                    max(min(left_y, left_y) - 16, 0),
+                    min(max(right_y, right_y) + 16, self.HEIGHT - 1),
+                ]
+                yield path, bbox
 
     @classmethod
     def load_image(cls, data):
         filepath, bbox = data
-        (x1, x2, y1, y2) = bbox
+        x1, x2, y1, y2 = bbox
         img = io.imread(filepath)
         img = img[y1:y2, x1:x2]
-        return resize(gray2rgb(img), [64, 64])
+        return resize(gray2rgb(img), [64, 64 * 3])
 
 
-class SynthEyeDataLoader(ImgDataLoader):
-
-    def __init__(self, chunk_size):
-        super().__init__(chunk_size)
-        self.paths = glob("indata/SynthEyes_data/**/*.png", recursive=True)
-
-    @staticmethod
-    def load_image(filepath):
-        img = io.imread(filepath)[:, :, 0:3]
-        return resize(img, [64, 64])
-
-
-class HelenEyeDataLoader(ImgDataLoader):
+class HelenEyeNoseDataLoader(ImgDataLoader):
 
     def __init__(self, chunk_size):
         super().__init__(chunk_size)
@@ -122,11 +83,23 @@ class HelenEyeDataLoader(ImgDataLoader):
                 l_eye_raw = lines[start + 20:start + 40]
 
             filepath = filepaths[0]
-            for eye in [r_eye_raw, l_eye_raw]:
-                for i in range(3):
-                    bbox = self.get_bbox(eye)
-                    if bbox:
-                        yield filepath, bbox
+            for i in range(3):
+                l_bbox = self.get_bbox(l_eye_raw)
+                r_bbox = self.get_bbox(r_eye_raw)
+
+                if not all([l_bbox, r_bbox]):
+                    continue
+
+                left_x, _, left_down_y, left_up_y = l_bbox
+                _, right_x, right_down_y, right_up_y = r_bbox
+                down_y = min(left_down_y, right_down_y)
+                up_y = max(left_up_y, right_up_y)
+                if up_y < down_y:
+                    up_y, down_y = down_y, up_y
+                bbox = [left_x, right_x, down_y, up_y]
+
+                yield filepath, bbox
+
 
     @staticmethod
     def get_bbox(raw):
@@ -155,4 +128,4 @@ class HelenEyeDataLoader(ImgDataLoader):
         (x1, x2, y1, y2) = bbox
         img = io.imread(filepath)
         img = img[y1:y2, x1:x2]
-        return resize(img, [64, 64])
+        return resize(img, [64, 64 * 3])

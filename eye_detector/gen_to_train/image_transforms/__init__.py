@@ -9,7 +9,8 @@ def rgb(img):
 
 def gray(img):
     img = rgb2gray(img)
-    return equalize_adapthist(img / np.max(img))
+    return img
+    #return equalize_adapthist(img / np.max(img))
 
 
 IMAGE_TRANSFORMS = {

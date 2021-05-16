@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision.datasets import ImageFolder
 from torchvision.utils import make_grid
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 
 from eye_detector.const import CLASSES
 
@@ -45,9 +45,8 @@ class Net(nn.Module):
         return x
 
 
-def train(net):
-    trainset = ImageFolder(root='middata/transformed_label', transform=transform)
-    trainloader = DataLoader(trainset, batch_size=4, shuffle=True, num_workers=2)
+def train(dataset, net):
+    trainloader = DataLoader(dataset, batch_size=4, shuffle=True, num_workers=2)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
@@ -74,9 +73,8 @@ def train(net):
                 running_loss = 0.0
 
 
-def test_data(net):
-    testset = ImageFolder(root='testdata', transform=transform)
-    testloader = DataLoader(testset, batch_size=4, shuffle=False, num_workers=2)
+def test_data(dataset, net):
+    testloader = DataLoader(dataset, batch_size=4, shuffle=False, num_workers=2)
     class_correct = [0.0] * len(CLASSES)
     class_total = [0.0] * len(CLASSES)
 
@@ -95,9 +93,19 @@ def test_data(net):
         print(f"Accuracy of {klass:10s} : {100 * ratio:06.2f}%")
 
 
+def create_dataset():
+    dataset = ImageFolder(root='middata/transformed_label', transform=transform)
+    size = len(dataset)
+    train_size = int(size * 0.8)
+    test_size = size - train_size
+    return random_split(dataset, [train_size, test_size])
+
+
 if __name__ == "__main__":
     net = Net()
-    train(net)
-    #test_data(net)
+    trainset, testset = create_dataset()
+
+    train(trainset, net)
+    test_data(testset, net)
     torch.save(net.state_dict(), "outdata/net.pth")
     print('Finished Training')

@@ -62,7 +62,7 @@ class FullModel:
         face_scales,
         eye_scales,
         face_limit_ratio=0.2,
-        eye_limit_ration=0.4,
+        eye_limit_ratio=0.4,
     ):
         self.face_window = load_window('face')
         self.eye_window = load_window('eye')
@@ -80,7 +80,7 @@ class FullModel:
         except StopIteration:
             return None
 
-        return self._change_region_to_eye_only_img(fame, region)
+        return self._change_region_to_eye_only_img(frame, region)
 
 
     def detect_faces(self, frame):
@@ -129,8 +129,8 @@ class FullModel:
     @staticmethod
     def _change_region_to_eye_only_img(frame, region):
         y1, x1, y2, x2 = region.bbox
-        eye = img[y1:y2, x1:x2]
+        eye = frame[y1:y2, x1:x2]
         eye = resize(eye, (64, 64 * 3))
         left_eye = eye[:, :64]
         right_eye = eye[:, -64:]
-        return concatenate([left_eye, right_eye], axis=1)
+        return np.concatenate([left_eye, right_eye], axis=1)

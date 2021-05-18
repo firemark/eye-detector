@@ -52,6 +52,7 @@ def train(dataset, net):
 
     for epoch in range(2):  # loop over the dataset multiple times
         running_loss = 0.0
+        total = 0
         for i, data in enumerate(trainloader):
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = data
@@ -67,30 +68,34 @@ def train(dataset, net):
 
             # print statistics
             running_loss += loss.item()
+            total += len(labels)
             if i % 10 == 0:
-                print('[%d, %5d] loss: %.3f' %
-                      (epoch + 1, i + 1, running_loss / 2000))
+                print('[%2d, %5d] loss: %.3f' %
+                      (epoch + 1, total, running_loss / 2000))
                 running_loss = 0.0
 
 
 def test_data(dataset, net):
     testloader = DataLoader(dataset, batch_size=4, shuffle=False, num_workers=2)
-    class_correct = [0.0] * len(CLASSES)
-    class_total = [0.0] * len(CLASSES)
+    matrix = np.zeros((len(CLASSES), len(CLASSES)), int)
 
     with torch.no_grad():
         for data in testloader:
             images, labels = data
             outputs = net(images)
             _, predicted = torch.max(outputs, 1)
-            correct = (predicted == labels)
-            for i, label in enumerate(labels):
-                class_correct[label] += correct[i].item()
-                class_total[label] += 1
+            #correct = (predicted == labels)
+            for l, p in zip(labels, predicted):
+                matrix[l, p] += 1
 
-    for i, klass in enumerate(CLASSES):
-        ratio = class_correct[i] / class_total[i]
-        print(f"Accuracy of {klass:10s} : {100 * ratio:06.2f}%")
+    print('---')
+    print('total:', len(dataset))
+    print(' '.join('%12s' % label for label in ('-',) + CLASSES))
+    for y, label in enumerate(CLASSES):
+        print(
+            '%12s' % label,
+            ' '.join('%12d' % matrix[x, y] for x in range(len(CLASSES)))
+        )
 
 
 def create_dataset():
@@ -101,7 +106,7 @@ def create_dataset():
     return random_split(dataset, [train_size, test_size])
 
 
-if __name__ == "__main__":
+def main():
     net = Net()
     trainset, testset = create_dataset()
 
@@ -109,3 +114,7 @@ if __name__ == "__main__":
     test_data(testset, net)
     torch.save(net.state_dict(), "outdata/net.pth")
     print('Finished Training')
+
+
+if __name__ == "__main__":
+    main()

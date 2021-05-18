@@ -61,7 +61,7 @@ class FullModel:
         *,
         face_scales,
         eye_scales,
-        face_limit_ratio=0.2,
+        face_limit_ratio=0.4,
         eye_limit_ratio=0.4,
     ):
         self.face_window = load_window('face')
@@ -75,10 +75,16 @@ class FullModel:
         faces_croped = self.detect_faces(frame)
         eyes_croped = self.detect_eyes(frame, faces_croped)
 
-        try:
-            region = next(r for r in regionprops(label(eyes_croped)))
-        except StopIteration:
+        if eyes_croped is None:
             return None
+
+        if not np.any(eyes_croped):
+            return None
+
+        regions = regionprops(label(eyes_croped))
+        if len(regions) != 1:
+            return None
+        region = regions[0]
 
         return self._change_region_to_eye_only_img(frame, region)
 
@@ -97,10 +103,13 @@ class FullModel:
     def comp_heatmap_eyes(self, frame, croped):
         size = frame.shape[0:2]
 
-        try:
-            region = next(r for r in regionprops(label(croped)))
-        except StopIteration:
-            return np.zeros(size, float)
+        if not np.any(croped):
+            return None
+
+        regions = regionprops(label(croped))
+        if len(regions) != 1:
+            return None
+        region = regions[0]
 
         y1, x1, y2, x2 = region.bbox
         frame = frame[y1:y2, x1:x2]

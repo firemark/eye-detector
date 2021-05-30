@@ -14,8 +14,10 @@ from matplotlib.widgets import Button
 from eye_detector.heatmap import compute_heatmap, crop_heatmap
 from eye_detector.model import load_window
 
-EYE_SCALE = 1.25
-FACE_SCALE = 2.5
+EYE_SCALE = 2.0 #1.5
+FACE_SCALE = 4.0 #2.5
+#IMAGES_PATH = "indata/to_label/*/*.png"
+IMAGES_PATH = "indata/to_label/*/1621364139545.png"
 
 
 def test(windows, img_path):
@@ -36,7 +38,7 @@ def test(windows, img_path):
 def face_detection(window, img):
     heatmap = compute_heatmap(img.shape[0:2], window(img, scale=FACE_SCALE))
     heatmap **= 2
-    croped = crop_heatmap(heatmap, limit_ratio=0.05)
+    croped = crop_heatmap(heatmap, limit_ratio=0.4)
 
     return heatmap, croped
 
@@ -71,7 +73,7 @@ class Index:
             load_window('face'),
             load_window('eye'),
         )
-        self.images = glob("indata/00000/*.png", recursive=True)
+        self.images = glob(IMAGES_PATH, recursive=True)
         shuffle(self.images)
 
     def setup_plot(self):

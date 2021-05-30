@@ -13,8 +13,8 @@ from eye_detector.model import FullModel
 from eye_detector.const import CLASSES
 
 
-FACE_SCALES = [4.0]
-EYE_SCALES = [2.0]
+FACE_SCALES = [3.0]
+EYE_SCALES = [1.5]
 
 
 def load(filepath):

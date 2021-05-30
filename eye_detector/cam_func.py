@@ -17,15 +17,6 @@ def del_win(cap):
 
 def draw_camera(frame, it, title='frame', border_color=255):
     show_frame = cv2.resize(frame, (W, H))
-    x = it % ROWS
-    y = it // ROWS
-    cv2.rectangle(
-        show_frame,
-        (PW * x, PH * y),
-        (PW * (x + 1), PH * (y + 1)),
-        border_color,
-        5,
-    )
     #cv2.putText(
     #    show_frame,
     #    f"Frame {i:03d}",
@@ -36,3 +27,18 @@ def draw_camera(frame, it, title='frame', border_color=255):
     #)
 
     cv2.imshow(title, show_frame)
+
+
+def draw_it(frame, it):
+    h, w = frame.shape[0:2]
+    x = it % ROWS
+    y = it // ROWS
+    pw = w // 2
+    ph = h // 2
+    cv2.rectangle(
+        frame,
+        (pw * x, ph * y),
+        (pw * (x + 1), ph * (y + 1)),
+        (0xFF, 0xFF, 0xFF),
+        5,
+    )

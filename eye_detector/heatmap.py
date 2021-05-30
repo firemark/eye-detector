@@ -10,4 +10,4 @@ def compute_heatmap(size, generator):
 
 def crop_heatmap(heatmap, limit_ratio=0.5):
     limit = np.max(heatmap) * limit_ratio
-    return heatmap >= limit
+    return heatmap > limit

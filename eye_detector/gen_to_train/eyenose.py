@@ -23,11 +23,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
     data_loader = utils.get_img_data_loader(args, DATASETS, 'bioid')
 
-    utils.recreate_directory("eye_to_train")
+    utils.recreate_directory("eyenose_to_train")
     transform = utils.find_transform(
         transform_name=args.transform,
         transform_image_name=args.image_transform,
     )
     dumper = EyeNoseDumper(transform, args, data_loader)
     utils.dump_with_time(dumper)
-    store_transform(transform, 'eye')
+    store_transform(transform, 'eyenose')

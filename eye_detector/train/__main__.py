@@ -14,7 +14,7 @@ parser = ArgumentParser(
 parser.add_argument(
     "type",
     metavar="TYPE",
-    choices=['FACE', 'EYE'],
+    choices=['FACE', 'EYENOSE', 'EYE'],
 )
 parser.add_argument(
     "models",

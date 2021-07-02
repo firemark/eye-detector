@@ -14,7 +14,7 @@ class EyeDumper(Dumper):
             dict(
                 name='face',
                 label=NOT_EYE_LABEL,
-                loader=FaceDataLoader(),
+                loader=FaceDataLoader(patch_size=(32, 64)),
                 multiplier=config.face_multiplier,
             ),
         ]

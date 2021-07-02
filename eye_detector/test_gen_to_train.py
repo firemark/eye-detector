@@ -19,8 +19,8 @@ if __name__ == "__main__":
     #eye_loader = eye.HelenEyeDataLoader(chunk_size=1000)
     #eye_loader = eye.BioIdEyeDataLoader(chunk_size=1000)
     #eye_loader = face.HelenFaceDataLoader(chunk_size=1000)
-    #eye_loader = eyenose.HelenEyeNoseDataLoader(chunk_size=1000)
-    eye_loader = eyenose.BioIdEyeNoseDataLoader(chunk_size=1000)
+    eye_loader = eye.HelenEyeDataLoader(chunk_size=1000)
+    #eye_loader = eye.BioIdEyeDataLoader(chunk_size=1000)
     hog = HogEye(pixels_per_cell=(16, 16), orientations=8)
     hog.set_image_transform(rgb2gray)
 

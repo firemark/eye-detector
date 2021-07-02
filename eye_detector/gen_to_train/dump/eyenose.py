@@ -6,7 +6,7 @@ from eye_detector.const import NOT_EYE_LABEL
 
 
 class EyeNoseDumper(Dumper):
-    LOADER_NAME = 'eye'
+    LOADER_NAME = 'eyenose'
 
     def __init__(self, transform_img, config, loader):
         super().__init__(transform_img, config, loader)
@@ -14,7 +14,7 @@ class EyeNoseDumper(Dumper):
             dict(
                 name='face',
                 label=NOT_EYE_LABEL,
-                loader=FaceDataLoader(cols=3),
+                loader=FaceDataLoader(patch_size=(64, 64 * 3)),
                 multiplier=config.face_multiplier,
             ),
         ]

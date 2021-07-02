@@ -35,7 +35,7 @@ class MrlEyeDataLoader(ImgDataLoader):
     @staticmethod
     def load_image(filepath):
         img = io.imread(filepath)
-        return resize(gray2rgb(img), [64, 64])
+        return resize(gray2rgb(img), [32, 64])
 
 
 class BioIdEyeDataLoader(ImgDataLoader):
@@ -66,13 +66,13 @@ class BioIdEyeDataLoader(ImgDataLoader):
             for cord in [left_cord, right_cord]:
                 for i in range(3):
                     x, y = cord
-                    x = int(x) + randint(0, 5)
-                    y = int(y) + randint(0, 5)
+                    x = int(x) + randint(0, 3)
+                    y = int(y) + randint(0, 3)
                     bbox = [
                         max(x - 16, 0),
                         min(x + 16, self.WIDTH - 1),
-                        max(y - 16, 0),
-                        min(y + 16, self.HEIGHT - 1),
+                        max(y - 8, 0),
+                        min(y + 8, self.HEIGHT - 1),
                     ]
                     yield path, bbox
 
@@ -82,7 +82,7 @@ class BioIdEyeDataLoader(ImgDataLoader):
         (x1, x2, y1, y2) = bbox
         img = io.imread(filepath)
         img = img[y1:y2, x1:x2]
-        return resize(gray2rgb(img), [64, 64])
+        return resize(gray2rgb(img), [32, 64])
 
 
 class SynthEyeDataLoader(ImgDataLoader):
@@ -94,7 +94,7 @@ class SynthEyeDataLoader(ImgDataLoader):
     @staticmethod
     def load_image(filepath):
         img = io.imread(filepath)[:, :, 0:3]
-        return resize(img, [64, 64])
+        return resize(img, [32, 64])
 
 
 class HelenEyeDataLoader(ImgDataLoader):
@@ -132,14 +132,14 @@ class HelenEyeDataLoader(ImgDataLoader):
     def get_bbox(raw):
         gen = (o.partition(',') for o in raw)
         xy = [(float(x), float(y)) for x, _, y in gen]
-        min_x = round(min(x for x, y in xy)) - 35
-        max_x = round(max(x for x, y in xy)) + 35
-        min_y = round(min(y for x, y in xy)) - 25
-        max_y = round(max(y for x, y in xy)) + 25
+        min_x = round(min(x for x, y in xy)) - 5
+        max_x = round(max(x for x, y in xy)) + 5
+        min_y = round(min(y for x, y in xy)) - 5
+        max_y = round(max(y for x, y in xy)) + 5
         dx = max_x - min_x
         dy = max_y - min_y
-        dx1 = dx // 10
-        dy1 = dy // 10
+        dx1 = dx // 5
+        dy1 = dy // 5
         cx = min_x + dx // 2 + randint(-dx1, dx1)
         cy = min_y + dy // 2 + randint(-dy1, dy1)
         dh = max(dx, dy) // 2
@@ -155,4 +155,4 @@ class HelenEyeDataLoader(ImgDataLoader):
         (x1, x2, y1, y2) = bbox
         img = io.imread(filepath)
         img = img[y1:y2, x1:x2]
-        return resize(img, [64, 64])
+        return resize(img, [32, 64])

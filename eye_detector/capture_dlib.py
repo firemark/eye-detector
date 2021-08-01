@@ -1,6 +1,7 @@
 import pickle
 from sys import argv
 from time import time
+from math import degrees
 
 import cv2
 import numpy as np
@@ -8,6 +9,8 @@ import torch
 import dlib
 
 from eye_detector.cam_func import init_win, del_win, draw_it
+from eye_detector.eye_data_conv_dlib import Model
+from eye_detector import pupil_coords
 
 
 def draw_face(frame, face, color):
@@ -163,28 +166,71 @@ def _land(func, landmarks, slice):
     return func_x(p.x for p in points), func_y(p.y for p in points)
 
 
+def draw_text(image, text, p, scale=1):
+    cv2.putText(image, text, p, cv2.FONT_HERSHEY_SIMPLEX, scale * 0.5, 255)
+
+
+def draw_pupil_coords(frame, eye_xy, pupil_xy, radius):
+    if eye_xy is None:
+        return
+    cv2.circle(frame, eye_xy, 3, (0x99, 0x99, 0x99), cv2.FILLED)
+    if pupil_xy is None:
+        return
+    cv2.line(frame, eye_xy, pupil_xy, (0xFF, 0xFF, 0xFF), 1)
+
+
+def draw_text_pupil_coords(frame, prefix, shift, eye_xy, pupil_xy, radius):
+    if eye_xy is None:
+        return
+    if pupil_xy is None:
+        return
+    dx = eye_xy[0] - pupil_xy[0]
+    dy = eye_xy[1] - pupil_xy[1]
+
+    #x_angle = pupil_coords.compute_angle(dx, radius)
+    #y_angle = pupil_coords.compute_angle(dy, radius)
+    #deg_x = degrees(x_angle)
+    #deg_y = degrees(y_angle)
+
+    deg_x = dx / radius * 100.0
+    deg_y = dy / radius * 100.0
+
+    text_xy = (0, shift)
+
+    draw_text(frame, f"{prefix}: {deg_x:+03.0f}, {deg_y:+03.0f}", text_xy)
+
+
+def loop(model, cap):
+    ret, frame = cap.read()
+
+    #gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    landmarks = model.detect_and_get_landmarks(frame)
+    if landmarks is None:
+        return frame
+
+    left = pupil_coords.get_left_coords(frame, model, landmarks)
+    right = pupil_coords.get_right_coords(frame, model, landmarks)
+
+    #frame[ly, lx][lmask] = (0x00, 0x00, 0xFF)
+    #frame[ry, rx][rmask] = (0xFF, 0x00, 0xFF)
+
+    draw_landmarks(frame, landmarks)
+    draw_pupil_coords(frame, *left)
+    draw_pupil_coords(frame, *right)
+    draw_text_pupil_coords(frame, "left ", 25, *left)
+    draw_text_pupil_coords(frame, "right", 50, *right)
+    return frame
+
 
 def main():
     cap = init_win()
-    detector = dlib.get_frontal_face_detector()
-    predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
-    i = 0
+    model = Model()
 
     while True:
-        ret, frame = cap.read()
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-        t = time()
-
-        for face in detector(gray):
-            landmarks = predictor(gray, face)
-            draw_landmarks(frame, landmarks)
-            draw_cross(frame, landmarks)
-            pose = compute_pose(frame, landmarks)
-            if pose is not None:
-                draw_pose(frame, landmarks, pose)
-
-        print("time:", time() - t)
+        t0 = time()
+        frame = loop(model, cap)
+        t1 = time()
+        print(f"time: {(t1 - t0) * 1e3:0.3f}ms")
 
         cv2.imshow("frame", frame)
         key = cv2.waitKey(50) & 0xFF

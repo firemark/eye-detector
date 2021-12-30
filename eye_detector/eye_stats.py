@@ -51,8 +51,13 @@ def compute(model, img_path):
 
     left_coords = pupil_coords.get_centroid(left_pupil_mask, lx, ly)
     right_coords = pupil_coords.get_centroid(right_pupil_mask, rx, ry)
+    if left_centroid:
+        left_points = model.get_left_eye_points(landmarks)
+        left_radius = pupil_coords.compute_radius(left_centroid, left_points[3])
+    else:
+        left_radius = None
 
-    return (img.shape[0:2], left_centroid, left_coords)
+    return (img.shape[0:2], left_centroid, left_coords, left_radius)
 
 
 def compute_dir(model, dirname, config, global_config):
@@ -65,16 +70,11 @@ def compute_dir(model, dirname, config, global_config):
         d = compute(model, filename)
         if d is None:
             continue
-        size, eye, pupil = d
+        size, eye, pupil, radius = d
         if not eye or not pupil:
             continue
-        h, w = size
-        eye_x = eye[0] / w - 0.5
-        eye_y = eye[1] / h - 0.5
-        pupil_x = (pupil[0] - eye[0]) / w
-        pupil_y = (pupil[1] - eye[1]) / h
-        row = [eye_x, eye_y, pupil_x, pupil_y]
-        global_config["csv"].writerow([config['index']] + row)
+        row = pupil_coords.compute_row(size, eye, pupil, radius)
+        global_config["csv"].writerow((config['index'],) + row)
         plt.arrow(
             *row,
             width=0.0005,

@@ -1,3 +1,4 @@
+import csv
 from time import time
 from glob import glob
 
@@ -15,6 +16,20 @@ def extract_results(name):
         data = load(path)
         x += (o.ravel() for o in data["x"])
         y += data["y"]
+    print("time:", time() - t)
+    return x, y
+
+
+def extract_csv_result(name):
+    t = time()
+    x = []
+    y = []
+    with open(f"middata/{name}.csv") as file:
+        reader = csv.reader(file, delimiter=',')
+        next(reader)  # skip header
+        for row in reader:
+            x.append([float(cell) for cell in row[1:]])
+            y.append(int(row[0]))
     print("time:", time() - t)
     return x, y
 

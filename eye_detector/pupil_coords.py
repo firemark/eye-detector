@@ -75,6 +75,15 @@ def compute_angle(length, radius):
     return 2 * np.arcsin(0.5 * length / radius)
 
 
+def compute_row(size, eye_xy, pupil_xy, radius):
+    h, w = size
+    eye_x = eye_xy[0] / w - 0.5
+    eye_y = eye_xy[1] / h - 0.5
+    pupil_x = (pupil_xy[0] - eye_xy[0]) / radius
+    pupil_y = (pupil_xy[1] - eye_xy[1]) / radius
+    return eye_x, eye_y, pupil_x, pupil_y
+
+
 def to_pupil_mask(img, eye_mask):
     hsv = rgb2hsv(img)
     sat = hsv[:, :, 1]

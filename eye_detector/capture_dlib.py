@@ -10,7 +10,15 @@ import dlib
 
 from eye_detector.cam_func import init_win, del_win, draw_it
 from eye_detector.eye_data_conv_dlib import Model
+from eye_detector.model import load_model
 from eye_detector import pupil_coords
+
+
+class EnrichedModel(Model):
+
+    def __init__(self):
+        super().__init__()
+        self.pupil_coords_model = load_model("eye-pupil")
 
 
 def draw_face(frame, face, color):
@@ -200,7 +208,21 @@ def draw_text_pupil_coords(frame, prefix, shift, eye_xy, pupil_xy, radius):
     draw_text(frame, f"{prefix}: {deg_x:+03.0f}, {deg_y:+03.0f}", text_xy)
 
 
-def loop(model, cap):
+def get_index(eye, size, model: EnrichedModel) -> int:
+    h, w = size
+    eye_xy, pupil_xy, *_ = eye
+    if not eye_xy  or not pupil_xy:
+        return None
+    eye_x = eye_xy[0] / w - 0.5
+    eye_y = eye_xy[1] / h - 0.5
+    pupil_x = (pupil_xy[0] - eye_xy[0]) / w
+    pupil_y = (pupil_xy[1] - eye_xy[1]) / h
+    row = [eye_x, eye_y, pupil_x, pupil_y]
+    outputs = model.pupil_coords_model.predict([row])
+    return outputs[0]
+
+
+def loop(model: EnrichedModel, cap):
     ret, frame = cap.read()
 
     #gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -210,21 +232,25 @@ def loop(model, cap):
 
     left = pupil_coords.get_left_coords(frame, model, landmarks)
     right = pupil_coords.get_right_coords(frame, model, landmarks)
+    index = get_index(left, frame.shape[0:2], model)
 
     #frame[ly, lx][lmask] = (0x00, 0x00, 0xFF)
     #frame[ry, rx][rmask] = (0xFF, 0x00, 0xFF)
+    if index is not None:
+        draw_it(frame, index)
 
     draw_landmarks(frame, landmarks)
     draw_pupil_coords(frame, *left)
     draw_pupil_coords(frame, *right)
     draw_text_pupil_coords(frame, "left ", 25, *left)
     draw_text_pupil_coords(frame, "right", 50, *right)
+    draw_text(frame, f"index: {index}", (0, 75))
     return frame
 
 
 def main():
     cap = init_win()
-    model = Model()
+    model = EnrichedModel()
 
     while True:
         t0 = time()

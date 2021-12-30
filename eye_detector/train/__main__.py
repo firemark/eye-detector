@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 import joblib
 
 from eye_detector.train.models import NAME_TO_MODEL
-from eye_detector.train.data import extract_results, prepare_data
+from eye_detector.train.data import extract_results, extract_csv_result, prepare_data
 from eye_detector.train.results import compute_cross_val_score, print_info
 from eye_detector.train.select_model import train, predict
 from eye_detector.model import store_model
@@ -14,7 +14,7 @@ parser = ArgumentParser(
 parser.add_argument(
     "type",
     metavar="TYPE",
-    choices=['FACE', 'EYENOSE', 'EYE'],
+    choices=['FACE', 'EYENOSE', 'EYE', 'EYE-PUPIL'],
 )
 parser.add_argument(
     "models",
@@ -32,12 +32,12 @@ parser.add_argument(
 if __name__ == "__main__":
     args = parser.parse_args()
     args.type = args.type.lower()
-    eye_shape = joblib.load(f"outdata/x_{args.type}_shape")
+    shape = joblib.load(f"outdata/x_{args.type}_shape") if args.type != "eye-pupil" else (4,)
     models = [NAME_TO_MODEL[model_name] for model_name in args.models]
     limit = args.limit
     scores = []
 
-    x, y = extract_results(args.type)
+    x, y = extract_results(args.type) if args.type != "eye-pupil" else extract_csv_result("eye_coords_map")
     x_train, x_test, y_train, y_test = prepare_data(x, y)
 
     compute_cross_val_score(x_train, y_train)
@@ -46,7 +46,7 @@ if __name__ == "__main__":
         print("-" * 20)
         print("---", model_func.__name__)
         print("---")
-        model = model_func(x_test, y_test, eye_shape)
+        model = model_func(x_test, y_test, shape)
         if limit is not None:
             train(model, x_train[:limit], y_train[:limit])
         else:

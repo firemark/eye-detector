@@ -1,12 +1,14 @@
 import pickle
 from sys import argv
 from time import time
-from math import degrees
+from math import degrees, tan
+from collections import deque
 
 import cv2
 import numpy as np
 import torch
 import dlib
+from scipy.spatial.transform import Rotation
 
 from eye_detector.cam_func import init_win, del_win, draw_it
 from eye_detector.eye_data_conv_dlib import Model
@@ -19,20 +21,6 @@ class EnrichedModel(Model):
     def __init__(self):
         super().__init__()
         self.pupil_coords_model = load_model("eye-pupil")
-
-
-def draw_face(frame, face, color):
-    x1 = face.left()
-    y1 = face.top()
-    x2 = face.right()
-    y2 = face.bottom()
-    cv2.rectangle(
-        frame,
-        (x1, y1),
-        (x2, y2),
-        color,
-        2,
-    )
 
 
 def draw_landmarks(frame, landmarks):
@@ -68,10 +56,10 @@ def draw_landmarks(frame, landmarks):
     draw_landmarks_range(27, 31, color=(0x20, 0x88, 0xFF))
     # left eye
     draw_landmarks_range(36, 42, color=(0x50, 0x50, 0xFF))
-    draw_rect(36, 39, color=(0x50, 0x50, 0xFF))
+    #draw_rect(36, 39, color=(0x50, 0x50, 0xFF))
     # right eye
     draw_landmarks_range(42, 48, color=(0xFF, 0x50, 0x50))
-    draw_rect(42, 45, color=(0xFF, 0x50, 0x50))
+    #draw_rect(42, 45, color=(0xFF, 0x50, 0x50))
 
 
 def draw_cross(frame, landmarks):
@@ -86,80 +74,6 @@ def draw_cross(frame, landmarks):
 
     cv2.line(frame, left, right, (0x10, 0xFF, 0x20), 1)
     cv2.line(frame, up, down, (0xC0, 0xFF, 0x20), 1)
-
-
-_saved_matrix = None
-def get_camera_matrix(frame):
-    global _saved_matrix
-
-    dist_coeffs = np.zeros((4,1), dtype="double") # Assuming no lens distortion
-
-    if _saved_matrix is not None:
-        return _saved_matrix, dist_coeffs
-
-    h, w = frame.shape[0:2]
-    f = w
-    camera_matrix = np.array([
-        [f, 0, h / 2],
-        [0, f, w / 2],
-        [0, 0, 1],
-    ], dtype="double")
-    _saved_matrix = camera_matrix
-
-    return camera_matrix, dist_coeffs
-
-
-def compute_pose(frame, landmarks):
-    # https://learnopencv.com/head-pose-estimation-using-opencv-and-dlib/
-    image_points = np.array([
-        (p.x, p.y) for p in [
-            landmarks.part(30),  # Nose tip
-            landmarks.part(8),   # Chin
-            landmarks.part(36),  # Left eye left corner
-            landmarks.part(45),  # Right eye right corner
-            landmarks.part(48),  # Left Mouth corner
-            landmarks.part(54),  # Right Mouth corner
-        ]
-    ], dtype="double")
-
-    model_points = np.array([
-        (0.0, 0.0, 0.0),             # Nose tip
-        (0.0, -330.0, -65.0),        # Chin
-        (-225.0, 170.0, -135.0),     # Left eye left corner
-        (225.0, 170.0, -135.0),      # Right eye right corner
-        (-150.0, -150.0, -125.0),    # Left Mouth corner
-        (150.0, -150.0, -125.0),     # Right Mouth corner
-    ])
-
-    camera_matrix, dist_coeffs = get_camera_matrix(frame)
-    (success, rot_vec, pos_vec) = cv2.solvePnP(
-        model_points,
-        image_points,
-        camera_matrix,
-        dist_coeffs,
-        # flags=cv2.CV_ITERATIVE,
-    )
-
-    if not success:
-        return None
-
-    return rot_vec, pos_vec
-
-
-def draw_pose(frame, landmarks, pose):
-    rot_vec, pos_vec = pose
-    camera_matrix, dist_coeffs = get_camera_matrix(frame)
-    points, _ = cv2.projectPoints(
-        np.array([(0.0, 0.0, 500.0)]),
-        rot_vec,
-        pos_vec,
-        camera_matrix,
-        dist_coeffs,
-    )
-    point = landmarks.part(30)
-    start = (point.x, point.y)
-    stop = tuple(points[0, 0].astype(int))
-    cv2.line(frame, start, stop, (0, 0, 0), 3)
 
 
 def _land(func, landmarks, slice):
@@ -187,25 +101,116 @@ def draw_pupil_coords(frame, eye_xy, pupil_xy, radius):
     cv2.line(frame, eye_xy, pupil_xy, (0xFF, 0xFF, 0xFF), 1)
 
 
-def draw_text_pupil_coords(frame, prefix, shift, eye_xy, pupil_xy, radius):
+class EyeCache:
+    tx = 0
+    ty = 0
+    c = 0
+
+    def __init__(self, deque_size=5):
+        self.x = deque(maxlen=deque_size)
+        self.y = deque(maxlen=deque_size)
+
+    def update(self, x, y):
+        self.tx += x
+        self.ty += y
+        self.c += 1
+        if self.c >= 1:
+            self.x.append(self.tx / self.c)
+            self.y.append(self.ty / self.c)
+            self.tx = 0
+            self.ty = 0
+            self.c = 0
+
+class ScreenBox:
+
+    def __init__(self, leftdown_position, width, height, roll=0.0, pitch=0.0, yaw=0.0):
+        euler_angles = np.array([yaw, pitch, roll])
+        rotation = Rotation.from_euler('xyz', euler_angles, degrees=True)
+        position = leftdown_position + [width / 2, height / 2, 0]
+        points = rotation.apply(np.array([
+            [0.0, 0.0, 0.0],
+            [width, 0.0, 0.0],
+            [0.0, height, 0.0],
+        ])) + position
+
+        self.position = position
+        self.width = width
+        self.height = height
+        self.normal = np.cross(points[1] - points[0], points[2] - points[1])
+        self.plane_offset = -self.normal.dot(points[0]) # D parameter
+        self.inv_rotation = rotation.inv()
+        print(self.inv_rotation.as_matrix(), self.position, self.plane_offset, self.normal)
+
+    def intersect(self, direction, position):
+        # We have equations:
+        # (x,y,z) = direction * t + position
+        # x = direction[0] + t + position[0]
+        # y = direction[1] + t + position[1]
+        # z = direction[2] + t + position[2]
+        # Ax + Bx + Cy + D = 0
+        # normal = (A, B, C)
+        # So result is t = -(normal.dot(position) + D) / normal.dot(direction)
+        # And we need put computed t to (x,y,z) equations
+        normal = self.normal
+        divisor = normal.dot(direction)
+        if divisor == 0.0:
+            return None
+
+        dividend = -(normal.dot(position) + self.plane_offset)
+        t = dividend / divisor
+        if t <= 0.0:
+            return None
+
+        global_xyz = direction * t + position
+        local_xyz = self.inv_rotation.apply(global_xyz)# + self.position
+        return local_xyz[:2] + [self.width / 2, self.height / 2]
+
+
+eyecache_left = EyeCache()
+eyecache_right = EyeCache()
+screen_box = ScreenBox(
+    leftdown_position=np.array([0.0, 0.0, 0.0]),
+    #leftdown_position=np.array([-0.27, -0.03, -0.05]),
+    width=1.0, # 0.57
+    height=0.5, # 0.32
+)
+
+
+def draw_text_pupil_coords(frame, prefix, shift, eye_xy, pupil_xy, radius, eye_xyz, eyecache):
     if eye_xy is None:
         return
     if pupil_xy is None:
         return
-    dx = eye_xy[0] - pupil_xy[0]
-    dy = eye_xy[1] - pupil_xy[1]
+    eye_dx = eye_xy[0] - pupil_xy[0]
+    eye_dy = eye_xy[1] - pupil_xy[1]
 
-    #x_angle = pupil_coords.compute_angle(dx, radius)
-    #y_angle = pupil_coords.compute_angle(dy, radius)
+    x_angle = -pupil_coords.compute_angle(eye_dx, radius)
+    y_angle = -pupil_coords.compute_angle(eye_dy, radius)
     #deg_x = degrees(x_angle)
     #deg_y = degrees(y_angle)
+    #deg_x = dx / radius * 100.0
+    #deg_y = dy / radius * 100.0
 
-    deg_x = dx / radius * 100.0
-    deg_y = dy / radius * 100.0
+    dz = -eye_xyz[2]
+    direction = np.array([dz * tan(x_angle) * 3.14, dz * tan(y_angle), dz])
+    #direction = np.array([0.0, 0.0, dz])
+    local_xy = screen_box.intersect(direction, eye_xyz)
 
-    text_xy = (0, shift)
+    if local_xy is not None:
+        eyecache.update(local_xy[0], local_xy[1])
 
-    draw_text(frame, f"{prefix}: {deg_x:+03.0f}, {deg_y:+03.0f}", text_xy)
+    for i, (x, y) in enumerate(zip(eyecache.x, eyecache.y)):
+        if x < 0 or x > screen_box.width:
+            continue
+        if y < 0 or y > screen_box.height:
+            continue
+        pixel_x = int(x * frame.shape[1] / screen_box.width)
+        pixel_y = int(y * frame.shape[0] / screen_box.height)
+        cv2.circle(frame, (pixel_x, pixel_y), 5, (0x0, 0x00, int(0xff / len(eyecache.x) * i)), cv2.FILLED)
+
+    if len(eyecache.x) > 0:
+        text_xy = (30, shift)
+        draw_text(frame, f"{prefix}: {eyecache.x[-1]:+08.3f}, {eyecache.y[-1]:+08.3f}", text_xy)
 
 
 def get_index(eye, size, model: EnrichedModel) -> int:
@@ -223,34 +228,38 @@ def get_index(eye, size, model: EnrichedModel) -> int:
 
 
 def loop(model: EnrichedModel, cap):
-    ret, frame = cap.read()
+    color_frame, depth_frame = cap.get_frames()
 
-    #gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    landmarks = model.detect_and_get_landmarks(frame)
+    landmarks = model.detect_and_get_landmarks(color_frame)
     if landmarks is None:
-        return frame
+        return color_frame
 
-    left = pupil_coords.get_left_coords(frame, model, landmarks)
-    right = pupil_coords.get_right_coords(frame, model, landmarks)
-    index = get_index(left, frame.shape[0:2], model)
+    left = pupil_coords.get_left_coords(color_frame, model, landmarks)
+    right = pupil_coords.get_right_coords(color_frame, model, landmarks)
+
+    left_3d = cap.to_3d(left[0], depth_frame[int(left[0][1]), int(left[0][0])])
+    right_3d = cap.to_3d(right[0], depth_frame[int(right[0][1]), int(right[0][0])])
+    #index = get_index(left, frame.shape[0:2], model)
 
     #frame[ly, lx][lmask] = (0x00, 0x00, 0xFF)
     #frame[ry, rx][rmask] = (0xFF, 0x00, 0xFF)
-    if index is not None:
-        draw_it(frame, index)
+    #if index is not None:
+    #    draw_it(frame, index)
 
-    draw_landmarks(frame, landmarks)
-    draw_pupil_coords(frame, *left)
-    draw_pupil_coords(frame, *right)
-    draw_text_pupil_coords(frame, "left ", 25, *left)
-    draw_text_pupil_coords(frame, "right", 50, *right)
-    draw_text(frame, f"index: {index}", (0, 75))
-    return frame
+    draw_landmarks(color_frame, landmarks)
+    draw_pupil_coords(color_frame, *left)
+    draw_pupil_coords(color_frame, *right)
+    draw_text_pupil_coords(color_frame, "left ", 25, *left, left_3d, eyecache_left)
+    draw_text_pupil_coords(color_frame, "right", 50, *right, right_3d, eyecache_right)
+    #draw_text(frame, f"index: {index}", (0, 75))
+    return color_frame
 
 
 def main():
     cap = init_win()
     model = EnrichedModel()
+
+    cap.start()
 
     while True:
         t0 = time()

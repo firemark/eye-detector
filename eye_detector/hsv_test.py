@@ -49,14 +49,14 @@ def test(model, img_path):
     sat = hsv[:, :, 1]
     val = hsv[:, :, 2]
 
-    left[line(*left_centroid, *left_coords)] += (0.0, 0.0, 1.0)
-    if left_coords is not None:
-        left[left_coords] += (1.0, 0.0, 0.0)
+    # left[line(*left_centroid, *left_coords)] += (0.0, 0.0, 1.0)
+    # if left_coords is not None:
+    #     left[left_coords] += (1.0, 0.0, 0.0)
     left[left_mask] += (0.2, 0.0, 0.0)
 
-    right[line(*right_centroid, *right_coords)] += (0.0, 0.0, 1.0)
-    if right_coords is not None:
-        right[right_coords] += (1.0, 0.0, 0.0)
+    # right[line(*right_centroid, *right_coords)] += (0.0, 0.0, 1.0)
+    # if right_coords is not None:
+    #     right[right_coords] += (1.0, 0.0, 0.0)
     right[right_mask] += (0.2, 0.0, 0.0)
 
     eye_img = model.concat(left, right)

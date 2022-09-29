@@ -1,8 +1,21 @@
+from dataclasses import dataclass
+from typing import Optional
+
 import numpy as np
 from skimage.measure import label, regionprops
 from skimage.draw import polygon
 from skimage.color import rgb2hsv
 from skimage.morphology import opening, disk
+
+
+@dataclass
+class EyeCoords:
+    x: slice
+    y: slice
+    eye_centroid: Optional[np.array]
+    pupil_centroid: Optional[np.array]
+    eye_corner_point: Optional[np.array]
+    pupil_mask: np.array
 
 
 def to_mask(img, model, landmarks):
@@ -49,30 +62,24 @@ def get_right_coords(img, model, landmarks, debug=False):
     return _get_coords(eye, x, y, points, points[0], debug)
 
 
-def _get_coords(eye, x, y, points, point_to_radius, debug=False):
+def _get_coords(eye, x, y, points, eye_corner_point, debug=False) -> EyeCoords:
     eye_mask = to_eye_mask(eye, x, y, points)
     pupil_mask = to_pupil_mask(eye, eye_mask)
     eye_centroid = get_centroid(eye_mask, x.start, y.start)
     pupil_centroid = get_centroid(pupil_mask, x.start, y.start)
-    radius = compute_radius(eye_centroid, point_to_radius)
-    data = eye_centroid, pupil_centroid, radius
+    data = EyeCoords(
+        x=x,
+        y=y,
+        eye_centroid=eye_centroid,
+        pupil_centroid=pupil_centroid,
+        eye_corner_point=eye_corner_point,
+        pupil_mask=pupil_mask,
+    )
 
     if debug:
         return pupil_mask, x, y, *data
     else:
         return data
-
-
-def compute_radius(a, b):
-    if a is None:
-        return None
-    dx = a[0] - b[0]
-    dy = a[1] - b[1]
-    return np.sqrt(dx*dx + dy+dy)
-
-
-def compute_angle(length, radius):
-    return 2 * np.arcsin(0.5 * length / radius)
 
 
 def compute_row(size, eye_xy, pupil_xy, radius):
@@ -90,8 +97,8 @@ def to_pupil_mask(img, eye_mask):
     val = hsv[:, :, 2]
 
     pupil_mask = np.logical_or(
-        val < 0.2,
-        sat > 0.5,
+        val < 0.6,
+        sat > 0.6,
     )
 
     total = np.logical_and(eye_mask, pupil_mask)
@@ -107,4 +114,4 @@ def get_centroid(mask, shift_x=0, shift_y=0):
     regions.sort(key=lambda r: -r.area)
     region = regions[0]
     x, y = region.centroid
-    return int(y + shift_x), int(x + shift_y)
+    return np.array([y + shift_x, x + shift_y]).astype(int)

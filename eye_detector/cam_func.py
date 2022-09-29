@@ -46,7 +46,7 @@ class RealsenseCam(Cam):
         profile = self._pipeline.start(config)
         self._align = rs.align(rs.stream.color)
         self._depth_scale = profile.get_device().first_depth_sensor().get_depth_scale()
-        self._intrinsics = profile.get_stream(rs.stream.depth).as_video_stream_profile().get_intrinsics()
+        self._intrinsics = profile.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
 
     def close(self):
         self._pipeline.stop()
@@ -61,10 +61,17 @@ class RealsenseCam(Cam):
 
         return color_frame, depth_frame
 
-    def to_3d(self, xy, depth):
+    def to_3d(self, xy, depth_frame):
         import pyrealsense2 as rs
+        x, y = xy
+        depth = depth_frame[int(y), int(x)]
+        if depth == 0.0:
+            return None
         return np.array(rs.rs2_deproject_pixel_to_point(self._intrinsics, xy, depth))
 
+    def from_3d(self, xyz):
+        import pyrealsense2 as rs
+        return np.array(rs.rs2_project_point_to_pixel(self._intrinsics, xyz))
 
 def init_win(title='frame'):
     cv2.namedWindow('frame', cv2.WINDOW_NORMAL)

@@ -1,8 +1,8 @@
-import pickle
-from sys import argv
+from dataclasses import dataclass
 from time import time
 from math import degrees, tan
 from collections import deque
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -14,6 +14,7 @@ from eye_detector.cam_func import init_win, del_win, draw_it
 from eye_detector.eye_data_conv_dlib import Model
 from eye_detector.model import load_model
 from eye_detector import pupil_coords
+from eye_detector.pupil_coords import EyeCoords
 
 
 class EnrichedModel(Model):
@@ -92,13 +93,14 @@ def draw_text(image, text, p, scale=1):
     cv2.putText(image, text, p, cv2.FONT_HERSHEY_SIMPLEX, scale * 0.5, 255)
 
 
-def draw_pupil_coords(frame, eye_xy, pupil_xy, radius):
-    if eye_xy is None:
+def draw_pupil_coords(frame, eye_coords):
+    if eye_coords.eye_centroid is None:
         return
-    cv2.circle(frame, eye_xy, 3, (0x99, 0x99, 0x99), cv2.FILLED)
-    if pupil_xy is None:
+    cv2.circle(frame, eye_coords.eye_centroid, 3, (0x99, 0x99, 0x99), cv2.FILLED)
+
+    if eye_coords.pupil_centroid is None:
         return
-    cv2.line(frame, eye_xy, pupil_xy, (0xFF, 0xFF, 0xFF), 1)
+    cv2.line(frame, eye_coords.eye_centroid, eye_coords.pupil_centroid, (0xFF, 0xFF, 0xFF), 1)
 
 
 class EyeCache:
@@ -114,12 +116,13 @@ class EyeCache:
         self.tx += x
         self.ty += y
         self.c += 1
-        if self.c >= 1:
+        if self.c >= 2:
             self.x.append(self.tx / self.c)
             self.y.append(self.ty / self.c)
             self.tx = 0
             self.ty = 0
             self.c = 0
+
 
 class ScreenBox:
 
@@ -139,7 +142,6 @@ class ScreenBox:
         self.normal = np.cross(points[1] - points[0], points[2] - points[1])
         self.plane_offset = -self.normal.dot(points[0]) # D parameter
         self.inv_rotation = rotation.inv()
-        print(self.inv_rotation.as_matrix(), self.position, self.plane_offset, self.normal)
 
     def intersect(self, direction, position):
         # We have equations:
@@ -163,6 +165,7 @@ class ScreenBox:
 
         global_xyz = direction * t + position
         local_xyz = self.inv_rotation.apply(global_xyz)# + self.position
+        local_xyz[1] = 0.0
         return local_xyz[:2] + [self.width / 2, self.height / 2]
 
 
@@ -171,86 +174,200 @@ eyecache_right = EyeCache()
 screen_box = ScreenBox(
     leftdown_position=np.array([0.0, 0.0, 0.0]),
     #leftdown_position=np.array([-0.27, -0.03, -0.05]),
-    width=1.0, # 0.57
-    height=0.5, # 0.32
+    width=0.57, # 0.57
+    height=0.32, # 0.32
 )
 
 
-def draw_text_pupil_coords(frame, prefix, shift, eye_xy, pupil_xy, radius, eye_xyz, eyecache):
-    if eye_xy is None:
-        return
-    if pupil_xy is None:
-        return
-    eye_dx = eye_xy[0] - pupil_xy[0]
-    eye_dy = eye_xy[1] - pupil_xy[1]
+def angles_to_direction_vector(angles_xy):
+    return np.array([tan(angles_xy[0]), tan(angles_xy[1]), 1])
 
-    x_angle = -pupil_coords.compute_angle(eye_dx, radius)
-    y_angle = -pupil_coords.compute_angle(eye_dy, radius)
-    #deg_x = degrees(x_angle)
-    #deg_y = degrees(y_angle)
-    #deg_x = dx / radius * 100.0
-    #deg_y = dy / radius * 100.0
 
-    dz = -eye_xyz[2]
-    direction = np.array([dz * tan(x_angle) * 3.14, dz * tan(y_angle), dz])
-    #direction = np.array([0.0, 0.0, dz])
-    local_xy = screen_box.intersect(direction, eye_xyz)
+def rotate_normal_by_angles(normal, angles_xy):
+    return Rotation.from_euler('xy', angles_xy).apply(normal)
 
-    if local_xy is not None:
-        eyecache.update(local_xy[0], local_xy[1])
 
+def to_unit_vector(vec: np.array):
+    if vec is None:
+        return vec
+    return vec / np.linalg.norm(vec)
+
+
+def point_to_screen(frame, x, y):
+    if x < 0 or x > screen_box.width:
+        return None
+    if y < 0 or y > screen_box.height:
+        return None
+    pixel_x = int(x * frame.shape[1] / screen_box.width)
+    pixel_y = int(y * frame.shape[0] / screen_box.height)
+    return (pixel_x, pixel_y)
+
+
+def draw_text_pupil_coords(frame, prefix, shift, eyecache: EyeCache):
     for i, (x, y) in enumerate(zip(eyecache.x, eyecache.y)):
-        if x < 0 or x > screen_box.width:
+        screen_point = point_to_screen(frame, x, y)
+        if screen_point is None:
             continue
-        if y < 0 or y > screen_box.height:
-            continue
-        pixel_x = int(x * frame.shape[1] / screen_box.width)
-        pixel_y = int(y * frame.shape[0] / screen_box.height)
-        cv2.circle(frame, (pixel_x, pixel_y), 5, (0x0, 0x00, int(0xff / len(eyecache.x) * i)), cv2.FILLED)
+        cv2.circle(frame, screen_point, 5, (0x0, 0x00, int(0xff / len(eyecache.x) * i)), cv2.FILLED)
 
     if len(eyecache.x) > 0:
         text_xy = (30, shift)
         draw_text(frame, f"{prefix}: {eyecache.x[-1]:+08.3f}, {eyecache.y[-1]:+08.3f}", text_xy)
 
 
-def get_index(eye, size, model: EnrichedModel) -> int:
-    h, w = size
-    eye_xy, pupil_xy, *_ = eye
-    if not eye_xy  or not pupil_xy:
+
+
+def draw_3d_vec(frame, cap, direction_xyz, point_xyz, length, color):
+    direction_vec = to_unit_vector(direction_xyz) * length
+    point_a = cap.from_3d(point_xyz)
+    point_b = cap.from_3d(point_xyz + direction_vec)
+
+    if np.any(np.isnan(point_a)) or np.any(np.isnan(point_b)):
+        return
+
+    cv2.line(frame, point_a.astype(int), point_b.astype(int), color, 2)
+
+
+def compute_face_normal(landmarks, cap, depth_frame):
+    #return np.array([0.0, 0.0, -1.0])
+    points = [
+        cap.to_3d(np.array([p.x, p.y]), depth_frame) for p in [
+            landmarks.part(8),  # Chin
+            landmarks.part(45),  # Right eye right corner
+            landmarks.part(36),  # Left eye left corner
+        ]
+    ]
+
+    if any(p is None for p in points):
         return None
-    eye_x = eye_xy[0] / w - 0.5
-    eye_y = eye_xy[1] / h - 0.5
-    pupil_x = (pupil_xy[0] - eye_xy[0]) / w
-    pupil_y = (pupil_xy[1] - eye_xy[1]) / h
-    row = [eye_x, eye_y, pupil_x, pupil_y]
-    outputs = model.pupil_coords_model.predict([row])
-    return outputs[0]
+
+    return np.cross(points[1] - points[0], points[2] - points[1])
+
+
+@dataclass
+class Eye3D:
+    eye_xyz: np.array
+    pupil_xyz: np.array
+    direction: np.array
+
+
+def draw_angles(frame, prefix, shift, direction):
+    camera_normal = np.array([0.0, 0.0, -1.0])
+    xz_vec = camera_normal[[0, 2]] - direction[[0, 2]]
+    yz_vec = camera_normal[[1, 2]] - direction[[1, 2]]
+    yaw_distance = np.linalg.norm(xz_vec)
+    pitch_distance = np.linalg.norm(yz_vec)
+
+    yaw = 2 * np.arcsin(yaw_distance / 2.0) * (1 if xz_vec[0] < 0 else -1)
+    pitch = 2 * np.arcsin(pitch_distance / 2.0) * (1 if yz_vec[0] < 0 else -1)
+
+    #print(prefix, degrees(yaw), degrees(pitch))
+
+    text_xy = (30, shift)
+    draw_text(frame, f"{prefix}: {degrees(yaw):+08.3f}, {degrees(pitch):+08.3f}", text_xy)
+
+
+def update_pointer_coords(eyecache: EyeCache, eye_3d: Optional[Eye3D]):
+    if eye_3d is None:
+        return
+
+    local_xy = screen_box.intersect(eye_3d.direction, eye_3d.pupil_xyz)
+    if local_xy is None:
+        return
+
+    eyecache.update(local_xy[0], local_xy[1])
+
+
+def compute_eye_3d(cap, depth_frame, face_normal, eye_coords: EyeCoords) -> Optional[Eye3D]:
+    if face_normal is None or eye_coords.eye_centroid is None or eye_coords.pupil_centroid is None:
+        return None
+
+    eye_xyz = cap.to_3d(eye_coords.eye_centroid, depth_frame)
+    pupil_xyz = cap.to_3d(eye_coords.pupil_centroid, depth_frame)
+    eye_corner_point_xyz = cap.to_3d(eye_coords.eye_corner_point, depth_frame)
+
+    if eye_xyz is None or pupil_xyz is None or eye_corner_point_xyz is None:
+        return None
+
+    #radius = np.linalg.norm(eye_xyz - eye_corner_point_xyz)
+    radius = 0.025
+    center_of_eye = eye_xyz - face_normal * radius / 2
+    direction = to_unit_vector(pupil_xyz - center_of_eye)
+    return Eye3D(eye_xyz, pupil_xyz, direction)
+
+
+def draw_rectangle(frame, eyecache_left, eyecache_right):
+    if len(eyecache_left.x) == 0 or len(eyecache_right.x) == 0:
+        return
+
+    x = (eyecache_left.x[-1] + eyecache_right.x[-1]) / 2
+    y = (eyecache_left.y[-1] + eyecache_right.y[-1]) / 2
+
+    screen_point = point_to_screen(frame, x, y)
+
+    if screen_point is None:
+        return
+
+    SIZE = 4
+    W_SIZE = frame.shape[1] // SIZE
+    H_SIZE = frame.shape[0] // SIZE
+
+    pixel_x = (screen_point[0] // W_SIZE) * W_SIZE
+    pixel_y = (screen_point[1] // H_SIZE) * H_SIZE
+
+    cv2.rectangle(frame, (pixel_x, pixel_y - H_SIZE // 2), (pixel_x + W_SIZE, pixel_y + H_SIZE // 2), (0x00, 0xFF, 0xFF), 5)
 
 
 def loop(model: EnrichedModel, cap):
     color_frame, depth_frame = cap.get_frames()
+    color_frame = cv2.flip(color_frame, 1)
+    depth_frame = cv2.flip(depth_frame, 1)
 
     landmarks = model.detect_and_get_landmarks(color_frame)
     if landmarks is None:
         return color_frame
 
+    face_normal = to_unit_vector(compute_face_normal(landmarks, cap, depth_frame))
+
     left = pupil_coords.get_left_coords(color_frame, model, landmarks)
     right = pupil_coords.get_right_coords(color_frame, model, landmarks)
 
-    left_3d = cap.to_3d(left[0], depth_frame[int(left[0][1]), int(left[0][0])])
-    right_3d = cap.to_3d(right[0], depth_frame[int(right[0][1]), int(right[0][0])])
-    #index = get_index(left, frame.shape[0:2], model)
+    left_3d = compute_eye_3d(cap, depth_frame, face_normal, left)
+    right_3d = compute_eye_3d(cap, depth_frame, face_normal, right)
 
+    update_pointer_coords(eyecache_left, left_3d)
+    update_pointer_coords(eyecache_right, right_3d)
+
+    #index = get_index(left, frame.shape[0:2], model)
     #frame[ly, lx][lmask] = (0x00, 0x00, 0xFF)
     #frame[ry, rx][rmask] = (0xFF, 0x00, 0xFF)
     #if index is not None:
     #    draw_it(frame, index)
 
     draw_landmarks(color_frame, landmarks)
-    draw_pupil_coords(color_frame, *left)
-    draw_pupil_coords(color_frame, *right)
-    draw_text_pupil_coords(color_frame, "left ", 25, *left, left_3d, eyecache_left)
-    draw_text_pupil_coords(color_frame, "right", 50, *right, right_3d, eyecache_right)
+    #draw_pupil_coords(color_frame, left)
+    #draw_pupil_coords(color_frame, right)
+    draw_text_pupil_coords(color_frame, "left ", 25, eyecache_left)
+    draw_text_pupil_coords(color_frame, "right", 50, eyecache_right)
+
+    color_frame[left.y, left.x][left.pupil_mask] = np.array([0xFF, 0x00, 0x00], dtype=np.uint8)
+    color_frame[right.y, right.x][right.pupil_mask] = np.array([0xFF, 0x00, 0x00], dtype=np.uint8)
+
+    if face_normal is not None:
+        draw_angles(color_frame, "normal", 75, face_normal)
+
+    if left_3d:
+        draw_3d_vec(color_frame, cap, face_normal, left_3d.eye_xyz, 0.1, (0x00, 0xFF, 0x00))
+        draw_3d_vec(color_frame, cap, left_3d.direction, left_3d.pupil_xyz, 0.05, (0x00, 0xFF, 0xFF))
+        draw_angles(color_frame, "left", 100, left_3d.direction)
+
+    if right_3d:
+        draw_3d_vec(color_frame, cap, face_normal, right_3d.eye_xyz, 0.1, (0x00, 0xFF, 0x00))
+        draw_3d_vec(color_frame, cap, right_3d.direction, right_3d.pupil_xyz, 0.05, (0x00, 0xFF, 0xFF))
+        draw_angles(color_frame, "right", 125, right_3d.direction)
+
+    draw_rectangle(color_frame, eyecache_left, eyecache_right)
+
     #draw_text(frame, f"index: {index}", (0, 75))
     return color_frame
 

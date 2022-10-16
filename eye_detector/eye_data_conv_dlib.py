@@ -61,11 +61,11 @@ class Model:
 
     @classmethod
     def get_left_eye(cls, frame, landmarks):
-        return cls._get_eye(frame, landmarks, *cls.LEFT_EYE, cls.LEFT_EYE_RANGE)
+        return cls._get_eye(frame, landmarks, cls.LEFT_EYE, cls.LEFT_EYE_RANGE)
 
     @classmethod
     def get_right_eye(cls, frame, landmarks):
-        return cls._get_eye(frame, landmarks, *cls.RIGHT_EYE, cls.RIGHT_EYE_RANGE)
+        return cls._get_eye(frame, landmarks, cls.RIGHT_EYE, cls.RIGHT_EYE_RANGE)
 
     @classmethod
     def get_left_eye_points(cls, landmarks):
@@ -81,9 +81,9 @@ class Model:
         return np.array([(p.x, p.y) for p in (landmarks.part(i) for i in gen)])
 
     @classmethod
-    def _get_eye(cls, frame, landmarks, left_index, right_index, eye_range):
+    def _get_eye(cls, frame, landmarks, left_right_indexes, eye_range):
         points = cls._get_points(landmarks, eye_range)
-        x, y = cls._get_rect(landmarks, left_index, right_index, points)
+        x, y = cls._get_rect(landmarks, left_right_indexes, points)
         eye = cls.crop_from_rect(frame, x, y)
         eye = cv2.normalize(eye, None, 0, 1, cv2.NORM_MINMAX, cv2.CV_32F)
         return eye, x, y
@@ -95,18 +95,23 @@ class Model:
         return eye
 
     @staticmethod
-    def _get_rect(landmarks, left_index, right_index, points):
-        ll_p = landmarks.part(left_index)
-        lr_p = landmarks.part(right_index)
+    def _get_rect(landmarks, left_right_indexes, points):
+        ll_p = landmarks.part(left_right_indexes[0])
+        lr_p = landmarks.part(left_right_indexes[1])
 
         size = lr_p.x - ll_p.x
-        size_w = int(size * 0.8)
-        size_h = int(size * 0.4)
-        cx, cy = np.sum(points, axis=0) // len(points)
+        size_w = int(size * 0.8) * 2
+        size_h = int(size * 0.4) * 2
+        cx = (lr_p.x + ll_p.x) // 2
+        cy = (lr_p.y + ll_p.y) // 2
+        #cx, cy = np.sum(points, axis=0) // len(points)
+
+        min_x, min_y = np.min(points, axis=0)
+        max_x, max_y = np.max(points, axis=0)
 
         return (
-            slice(cx - size_w, cx + size_w),
-            slice(cy - size_h, cy + size_h),
+            slice(min_x, max_x),
+            slice(min_y, max_y),
         )
 
 

@@ -75,7 +75,7 @@ class RealsenseCam(Cam):
 
 def init_win(title='frame'):
     cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
-    cv2.setWindowProperty("frame",cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
+    cv2.setWindowProperty('frame', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     return RealsenseCam()
     #return DefaultCam(0)

@@ -63,9 +63,19 @@ def get_right_coords(img, model, landmarks, debug=False):
 
 
 def _get_coords(eye, x, y, points, eye_corner_point, debug=False) -> EyeCoords:
+    if eye is None:
+        return EyeCoords(
+            x=x,
+            y=y,
+            eye_centroid=None,
+            pupil_centroid=None,
+            eye_corner_point=None,
+            pupil_mask=None,
+        )
     eye_mask = to_eye_mask(eye, x, y, points)
     pupil_mask = to_pupil_mask(eye, eye_mask)
-    eye_centroid = get_centroid(eye_mask, x.start, y.start)
+    eye_centroid = np.array([(x.start + x.stop) / 2, (y.start + y.stop) / 2], dtype=int)
+    #eye_centroid = get_centroid(eye_mask, x.start, y.start)
     pupil_centroid = get_centroid(pupil_mask, x.start, y.start)
     data = EyeCoords(
         x=x,
@@ -97,7 +107,7 @@ def to_pupil_mask(img, eye_mask):
     val = hsv[:, :, 2]
 
     pupil_mask = np.logical_or(
-        val < 0.6,
+        val < 0.5,
         sat > 0.6,
     )
 

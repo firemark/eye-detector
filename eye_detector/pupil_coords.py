@@ -50,13 +50,13 @@ def to_eye_mask(eye, x, y, points):
     return mask
 
 
-def get_left_coords(img, model, landmarks, debug=False):
+def get_left_coords(img, model, landmarks, debug=False) -> EyeCoords:
     eye, x, y = model.get_left_eye(img, landmarks)
     points = model.get_left_eye_points(landmarks)
     return _get_coords(eye, x, y, points, points[3], debug)
 
 
-def get_right_coords(img, model, landmarks, debug=False):
+def get_right_coords(img, model, landmarks, debug=False) -> EyeCoords:
     eye, x, y = model.get_right_eye(img, landmarks)
     points = model.get_right_eye_points(landmarks)
     return _get_coords(eye, x, y, points, points[0], debug)

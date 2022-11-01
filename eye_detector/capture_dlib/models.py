@@ -6,7 +6,6 @@ from scipy.spatial.transform import Rotation
 
 from eye_detector.model import load_model
 from eye_detector.eye_data_conv_dlib import Model
-from eye_detector.capture_dlib.utils import to_unit_vector
 
 
 @dataclass

@@ -4,9 +4,11 @@ from eye_detector import pupil_coords
 from eye_detector.capture_dlib.computes import (
     compute_face_normal,
     compute_eye_3d,
+    compute_rotation_matrix3,
     update_pointer_coords,
 )
 from eye_detector.capture_dlib.models import EnrichedModel
+from eye_detector.capture_dlib.utils import to_unit_vector
 from eye_detector.capture_dlib.draw import (
     draw_rectangle,
     draw_landmarks,
@@ -26,7 +28,12 @@ def loop(model: EnrichedModel, cap):
     if landmarks is None:
         return color_frame
 
+    rot_matrix = compute_rotation_matrix3(landmarks, cap, depth_frame)
     face_normal = compute_face_normal(landmarks, cap, depth_frame)
+    face_normal = to_unit_vector(face_normal)
+
+    if rot_matrix is not None and face_normal is not None:
+        print(face_normal, rot_matrix.apply([0, 0, 1]))
 
     left = pupil_coords.get_left_coords(color_frame, model, landmarks)
     right = pupil_coords.get_right_coords(color_frame, model, landmarks)
@@ -46,6 +53,16 @@ def loop(model: EnrichedModel, cap):
 
     if face_normal is not None:
         draw_angles(color_frame, "normal", 75, face_normal)
+
+    if rot_matrix is not None:
+        p = landmarks.part(62)
+        p = cap.to_3d([p.x, p.y], depth_frame)
+        if p is not None:
+            draw_3d_vec(color_frame, cap, rot_matrix.apply([1, 0, 0]), p, 0.1, (0x00, 0x00, 0xFF))
+            draw_3d_vec(color_frame, cap, rot_matrix.apply([0, 1, 0]), p, 0.1, (0xFF, 0x00, 0x00))
+            draw_3d_vec(color_frame, cap, rot_matrix.apply([0, 0, -1]), p, 0.1, (0x00, 0xFF, 0x00))
+            if face_normal is not None:
+                draw_3d_vec(color_frame, cap, face_normal, p, 0.1, (0xFF, 0xFF, 0x00))
 
     if left_3d:
         draw_3d_vec(color_frame, cap, face_normal, left_3d.eye_xyz, 0.1, (0x00, 0xFF, 0x00))

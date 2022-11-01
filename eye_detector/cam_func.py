@@ -47,6 +47,11 @@ class RealsenseCam(Cam):
         self._align = rs.align(rs.stream.color)
         self._depth_scale = profile.get_device().first_depth_sensor().get_depth_scale()
         self._intrinsics = profile.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
+        self.camera_matrix = np.array([
+            [self._intrinsics.fx, 0, self._intrinsics.ppx],
+            [0, self._intrinsics.fy, self._intrinsics.ppy],
+            [0, 0, self._intrinsics.ppx],
+        ], dtype=float)
 
     def close(self):
         self._pipeline.stop()

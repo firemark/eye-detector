@@ -4,7 +4,7 @@ from eye_detector import pupil_coords
 from eye_detector.capture_dlib.computes import (
     compute_face_normal,
     compute_eye_3d,
-    compute_rotation_matrix3,
+    compute_rotation_matrix1,
     update_pointer_coords,
 )
 from eye_detector.capture_dlib.models import EnrichedModel
@@ -15,7 +15,7 @@ from eye_detector.capture_dlib.draw import (
     draw_text_pupil_coords,
     draw_3d_vec,
     draw_pupil_mask,
-    draw_angles,
+    draw_angles, draw_axes,
 )
 
 
@@ -28,12 +28,8 @@ def loop(model: EnrichedModel, cap):
     if landmarks is None:
         return color_frame
 
-    rot_matrix = compute_rotation_matrix3(landmarks, cap, depth_frame)
-    face_normal = compute_face_normal(landmarks, cap, depth_frame)
-    face_normal = to_unit_vector(face_normal)
-
-    if rot_matrix is not None and face_normal is not None:
-        print(face_normal, rot_matrix.apply([0, 0, 1]))
+    rot_matrix = compute_rotation_matrix1(landmarks, cap, depth_frame)
+    face_normal = to_unit_vector(compute_face_normal(landmarks, cap, depth_frame))
 
     left = pupil_coords.get_left_coords(color_frame, model, landmarks)
     right = pupil_coords.get_right_coords(color_frame, model, landmarks)
@@ -54,15 +50,8 @@ def loop(model: EnrichedModel, cap):
     if face_normal is not None:
         draw_angles(color_frame, "normal", 75, face_normal)
 
-    if rot_matrix is not None:
-        p = landmarks.part(62)
-        p = cap.to_3d([p.x, p.y], depth_frame)
-        if p is not None:
-            draw_3d_vec(color_frame, cap, rot_matrix.apply([1, 0, 0]), p, 0.1, (0x00, 0x00, 0xFF))
-            draw_3d_vec(color_frame, cap, rot_matrix.apply([0, 1, 0]), p, 0.1, (0xFF, 0x00, 0x00))
-            draw_3d_vec(color_frame, cap, rot_matrix.apply([0, 0, -1]), p, 0.1, (0x00, 0xFF, 0x00))
-            if face_normal is not None:
-                draw_3d_vec(color_frame, cap, face_normal, p, 0.1, (0xFF, 0xFF, 0x00))
+    axes_2dpoint = landmarks.part(62)
+    draw_axes(cap.to_3d([axes_2dpoint.x, axes_2dpoint.y], depth_frame), cap, color_frame, rot_matrix, face_normal)
 
     if left_3d:
         draw_3d_vec(color_frame, cap, face_normal, left_3d.eye_xyz, 0.1, (0x00, 0xFF, 0x00))

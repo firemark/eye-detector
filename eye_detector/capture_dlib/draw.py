@@ -105,3 +105,24 @@ def draw_3d_vec(frame, cap, direction_xyz, point_xyz, length, color):
 
 def draw_pupil_mask(frame, coords: EyeCoords, color):
     frame[coords.y, coords.x][coords.pupil_mask] = np.array(color, dtype=np.uint8)
+
+
+def draw_axes(point, cap, color_frame,  rot_matrix, face_normal=None):
+    if point is None or rot_matrix is None:
+        return
+
+    k = 0.05
+    xx = rot_matrix.apply([+1.0, 0.0, 0.0])
+    yy = rot_matrix.apply([0.0, +1.0, 0.0])
+    zz = rot_matrix.apply([0.0, 0.0, -1.0])
+    p = point - (xx + yy) * k / 2.0
+    draw_3d_vec(color_frame, cap, xx, p, k, (0x00, 0x00, 0xFF))
+    draw_3d_vec(color_frame, cap, yy, p, k, (0xFF, 0x00, 0x00))
+    draw_3d_vec(color_frame, cap, zz, p, k, (0x00, 0xFF, 0x00))
+    draw_3d_vec(color_frame, cap, yy, p + xx * k, k, (0xFF, 0x00, 0x00))
+    draw_3d_vec(color_frame, cap, zz, p + xx * k, k, (0x00, 0xFF, 0x00))
+    draw_3d_vec(color_frame, cap, xx, p + yy * k, k, (0x00, 0x00, 0xFF))
+    draw_3d_vec(color_frame, cap, zz, p + yy * k, k, (0x00, 0xFF, 0x00))
+    draw_3d_vec(color_frame, cap, zz, p + (xx + yy) * k, k, (0x00, 0xFF, 0x00))
+    if face_normal is not None:
+        draw_3d_vec(color_frame, cap, face_normal, point, k, (0xFF, 0xFF, 0x00))

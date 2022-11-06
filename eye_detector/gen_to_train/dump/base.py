@@ -2,33 +2,50 @@ from joblib import Parallel, delayed, dump
 
 from eye_detector.const import EYE_LABEL
 
-
-class Dumper:
-    LOADER_NAME = 'img'
-
+class DumperBase:
     def __init__(self, transform_img, config, loader):
         self.transform_img = transform_img
         self.config = config
         self.loader = loader
-        self.another_loaders = []
+
+    def transform(self, img):
+        return self.transform_img(img)
 
     def dump(self):
         chunks = self.loader.chunk_it()
         generator = (
-            delayed(self.task)(i, paths)
+            delayed(self.task_wrapped)(i, paths)
             for i, paths in enumerate(chunks)
         )
         Parallel(n_jobs=self.config.jobs)(generator)
 
-    def task(self, i, paths):
-        config = self.config
-        print(f"{i * config.chunk_size: 6d}...")
+    def get_chunked_objs(self, i, paths):
         load_image = self.loader.load_image
-        imgs = [
+        return [
             self.transform(img)
             for img in (load_image(path) for path in paths)
             if img is not None
         ]
+
+    def task_wrapped(self, i, paths):
+        config = self.config
+        print(f"{i * config.chunk_size: 6d}...")
+        self.task(i, paths)
+
+    def task(self, i, paths):
+        pass
+
+
+class Dumper(DumperBase):
+    LOADER_NAME = 'img'
+
+    def __init__(self, transform_img, config, loader):
+        super().__init__(transform_img, config, loader)
+        self.another_loaders = []
+
+    def task(self, i, paths):
+        super().task(i, paths)
+        imgs = self.get_chunked_objs(paths)
 
         if i == 0:
             dump(imgs[0].shape, f"outdata/x_{self.LOADER_NAME}_shape")

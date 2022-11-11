@@ -94,15 +94,20 @@ class Model:
 
     @staticmethod
     def _get_rect(landmarks, left_right_indexes, points):
-        #ll_p = landmarks.part(left_right_indexes[0])
-        #lr_p = landmarks.part(left_right_indexes[1])
+        ll_p = landmarks.part(left_right_indexes[0])
+        lr_p = landmarks.part(left_right_indexes[1])
 
-        #size = lr_p.x - ll_p.x
-        #size_w = int(size * 0.8) * 2
-        #size_h = int(size * 0.4) * 2
+        size = lr_p.x - ll_p.x
+        size_w = int(size * 0.8) * 2
+        size_h = int(size * 0.4) * 2
         #cx = (lr_p.x + ll_p.x) // 2
         #cy = (lr_p.y + ll_p.y) // 2
-        #cx, cy = np.sum(points, axis=0) // len(points)
+        cx, cy = np.sum(points, axis=0) // len(points)
+
+        return [
+            slice(cx - size_w // 2, cx + size_w // 2),
+            slice(cy - size_h // 2, cy + size_h // 2),
+        ]
 
         min_x, min_y = np.min(points, axis=0)
         max_x, max_y = np.max(points, axis=0)

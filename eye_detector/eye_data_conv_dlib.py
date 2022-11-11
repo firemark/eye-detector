@@ -1,5 +1,4 @@
 from glob import glob
-from shutil import rmtree
 from os import mkdir
 from os.path import basename, isfile
 from contextlib import suppress
@@ -8,7 +7,6 @@ import cv2
 import dlib
 import numpy as np
 from skimage.io import imread, imsave
-from skimage.transform import resize
 
 from eye_detector.const import CLASSES
 
@@ -85,25 +83,25 @@ class Model:
         points = cls._get_points(landmarks, eye_range)
         x, y = cls._get_rect(landmarks, left_right_indexes, points)
         eye = cls.crop_from_rect(frame, x, y)
-        eye = cv2.normalize(eye, None, 0, 1, cv2.NORM_MINMAX, cv2.CV_32F)
+        #eye = cv2.normalize(eye, None, 0, 1, cv2.NORM_MINMAX, cv2.CV_32F)
         return eye, x, y
 
     @classmethod
     def crop_from_rect(cls, frame, x, y):
         eye = frame[y, x]
-        #eye = resize(eye, (30, 60))
+        #eye = resize(eye, (60, 40))
         return eye
 
     @staticmethod
     def _get_rect(landmarks, left_right_indexes, points):
-        ll_p = landmarks.part(left_right_indexes[0])
-        lr_p = landmarks.part(left_right_indexes[1])
+        #ll_p = landmarks.part(left_right_indexes[0])
+        #lr_p = landmarks.part(left_right_indexes[1])
 
-        size = lr_p.x - ll_p.x
-        size_w = int(size * 0.8) * 2
-        size_h = int(size * 0.4) * 2
-        cx = (lr_p.x + ll_p.x) // 2
-        cy = (lr_p.y + ll_p.y) // 2
+        #size = lr_p.x - ll_p.x
+        #size_w = int(size * 0.8) * 2
+        #size_h = int(size * 0.4) * 2
+        #cx = (lr_p.x + ll_p.x) // 2
+        #cy = (lr_p.y + ll_p.y) // 2
         #cx, cy = np.sum(points, axis=0) // len(points)
 
         min_x, min_y = np.min(points, axis=0)

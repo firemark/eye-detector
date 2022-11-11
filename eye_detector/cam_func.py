@@ -15,6 +15,9 @@ class Cam:
     def get_frames(self):
         raise NotImplementedError("get_frames")
 
+    def to_3d(self, xy, depth_frame):
+        raise NotImplementedError("to_3d")
+
 
 class DefaultCam(Cam):
 

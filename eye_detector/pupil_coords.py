@@ -62,6 +62,10 @@ def get_right_coords(img, model, landmarks, debug=False) -> EyeCoords:
     return _get_coords(eye, x, y, points, points[0], debug)
 
 
+def get_eye_centroid_from_ranges(x: range, y: range) -> np.ndarray:
+    return np.array([(x.start + x.stop) / 2, (y.start + y.stop) / 2], dtype=int)
+
+
 def _get_coords(eye, x, y, points, eye_corner_point, debug=False) -> EyeCoords:
     if eye is None:
         return EyeCoords(
@@ -74,7 +78,7 @@ def _get_coords(eye, x, y, points, eye_corner_point, debug=False) -> EyeCoords:
         )
     eye_mask = to_eye_mask(eye, x, y, points)
     pupil_mask = to_pupil_mask(eye, eye_mask)
-    eye_centroid = np.array([(x.start + x.stop) / 2, (y.start + y.stop) / 2], dtype=int)
+    eye_centroid = get_eye_centroid_from_ranges(x, y)
     #eye_centroid = get_centroid(eye_mask, x.start, y.start)
     pupil_centroid = get_centroid(pupil_mask, x.start, y.start)
     data = EyeCoords(

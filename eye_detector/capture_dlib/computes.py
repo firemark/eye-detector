@@ -2,27 +2,49 @@ from typing import Optional
 
 import numpy as np
 from scipy.spatial.transform import Rotation
+from torch import FloatTensor, DoubleTensor
 
-from eye_detector.pupil_coords import EyeCoords
+from eye_detector.cam_func import Cam
+from eye_detector.pupil_coords import EyeCoords as EyeCoordsPupil
 from eye_detector.capture_dlib.utils import to_unit_vector
-from eye_detector.capture_dlib.models import EyeCache, Eye3D, ScreenBox
+from eye_detector.capture_dlib.models import EyeCache, Eye3D, ScreenBox, EyeCoords, EnrichedModel
+from eye_detector.train_gaze.dataset import HEIGHT, WIDTH
 
 
-def compute_eye_3d(cap, depth_frame, face_normal, eye_coords: EyeCoords) -> Optional[Eye3D]:
+def compute_eye_3d(cap, depth_frame, face_normal, eye_coords: EyeCoordsPupil) -> Optional[Eye3D]:
     if face_normal is None or eye_coords.eye_centroid is None or eye_coords.pupil_centroid is None:
         return None
 
     eye_xyz = cap.to_3d(eye_coords.eye_centroid, depth_frame)
     pupil_xyz = cap.to_3d(eye_coords.pupil_centroid, depth_frame)
-    eye_corner_point_xyz = cap.to_3d(eye_coords.eye_corner_point, depth_frame)
 
-    if eye_xyz is None or pupil_xyz is None or eye_corner_point_xyz is None:
+    if eye_xyz is None or pupil_xyz is None:
         return None
 
     diameter = 0.025
     center_of_eye = eye_xyz - face_normal * diameter / 2
     direction = to_unit_vector(pupil_xyz - center_of_eye)
     return Eye3D(eye_xyz, pupil_xyz, direction)
+
+
+def compute_eye_3d_net(cam: Cam, model: EnrichedModel, depth_frame, rot_matrix: Rotation, eye_coords: EyeCoords) -> Optional[Eye3D]:
+    if rot_matrix is None or eye_coords.centroid is None:
+        return None
+
+    eye_xyz = cam.to_3d(eye_coords.centroid, depth_frame)
+    if eye_xyz is None:
+        return None
+
+    transformed_eye = model.net_transform(eye_coords.image).reshape((1, 3, WIDTH, HEIGHT))
+    rot_matrix_flat = rot_matrix.as_matrix().reshape((1, 9))
+
+    results = model.net({
+        "img": DoubleTensor(transformed_eye).float(),
+        "rot_matrix": FloatTensor(rot_matrix_flat),
+    })
+    direction = results[0].detach().numpy()
+    direction = to_unit_vector(direction)
+    return Eye3D(eye_xyz, eye_xyz, direction)
 
 
 def update_pointer_coords(screen_box: ScreenBox, eyecache: EyeCache, eye_3d: Optional[Eye3D]):

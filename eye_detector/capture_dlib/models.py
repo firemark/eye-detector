@@ -1,11 +1,18 @@
 from dataclasses import dataclass
 from collections import deque
+from typing import Optional
 
 import numpy as np
+import torch
 from scipy.spatial.transform import Rotation
+from skimage.transform import resize
 
+from eye_detector import pupil_coords
 from eye_detector.model import load_model
 from eye_detector.eye_data_conv_dlib import Model
+
+from eye_detector.train_gaze.model import Net
+from eye_detector.train_gaze.dataset import get_transform, WIDTH, HEIGHT
 
 
 @dataclass
@@ -13,6 +20,31 @@ class Eye3D:
     eye_xyz: np.ndarray
     pupil_xyz: np.ndarray
     direction: np.ndarray
+
+@dataclass
+class EyeCoords:
+    image: np.ndarray
+    centroid: Optional[np.ndarray]
+
+    @classmethod
+    def get_left(cls, img, model, landmarks):
+        eye, x, y = model.get_left_eye(img, landmarks)
+        return cls(
+            image=cls.resize(eye),
+            centroid=pupil_coords.get_eye_centroid_from_ranges(x, y),
+        )
+
+    @classmethod
+    def get_right(cls, img, model, landmarks):
+        eye, x, y = model.get_right_eye(img, landmarks)
+        return cls(
+            image=cls.resize(eye),
+            centroid=pupil_coords.get_eye_centroid_from_ranges(x, y),
+        )
+
+    @staticmethod
+    def resize(eye):
+        return resize(eye, (WIDTH, HEIGHT))
 
 
 class EnrichedModel(Model):
@@ -28,6 +60,14 @@ class EnrichedModel(Model):
             width=0.57,  # 0.57
             height=0.32,  # 0.32
         )
+        self.net_transform = get_transform(with_resize=False)
+        self.net = self.load_net()
+
+    def load_net(self) -> Net:
+        net = Net()
+        net.load_state_dict(torch.load("outdata/net.pth"))
+        net.eval()
+        return net
 
 
 class EyeCache:

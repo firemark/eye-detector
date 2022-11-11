@@ -12,22 +12,6 @@ def draw_text(image, text, p, scale=1):
     cv2.putText(image, text, p, cv2.FONT_HERSHEY_SIMPLEX, scale * 0.5, 255)
 
 
-def draw_angles(frame, prefix, shift, direction):
-    camera_normal = np.array([0.0, 0.0, -1.0])
-    xz_vec = camera_normal[[0, 2]] - direction[[0, 2]]
-    yz_vec = camera_normal[[1, 2]] - direction[[1, 2]]
-    yaw_distance = np.linalg.norm(xz_vec)
-    pitch_distance = np.linalg.norm(yz_vec)
-
-    yaw = 2 * np.arcsin(yaw_distance / 2.0) * (1 if xz_vec[0] < 0 else -1)
-    pitch = 2 * np.arcsin(pitch_distance / 2.0) * (1 if yz_vec[0] < 0 else -1)
-
-    #print(prefix, degrees(yaw), degrees(pitch))
-
-    text_xy = (30, shift)
-    draw_text(frame, f"{prefix}: {degrees(yaw):+08.3f}, {degrees(pitch):+08.3f}", text_xy)
-
-
 def draw_rectangle(frame, model: EnrichedModel):
     if len(model.eyecache_left.x) == 0 or len(model.eyecache_right.x) == 0:
         return
@@ -107,7 +91,7 @@ def draw_pupil_mask(frame, coords: EyeCoords, color):
     frame[coords.y, coords.x][coords.pupil_mask] = np.array(color, dtype=np.uint8)
 
 
-def draw_axes(point, cap, color_frame,  rot_matrix, face_normal=None):
+def draw_axes(point, cap, color_frame,  rot_matrix):
     if point is None or rot_matrix is None:
         return
 
@@ -124,5 +108,3 @@ def draw_axes(point, cap, color_frame,  rot_matrix, face_normal=None):
     draw_3d_vec(color_frame, cap, xx, p + yy * k, k, (0x00, 0x00, 0xFF))
     draw_3d_vec(color_frame, cap, zz, p + yy * k, k, (0x00, 0xFF, 0x00))
     draw_3d_vec(color_frame, cap, zz, p + (xx + yy) * k, k, (0x00, 0xFF, 0x00))
-    if face_normal is not None:
-        draw_3d_vec(color_frame, cap, face_normal, point, k, (0xFF, 0xFF, 0x00))

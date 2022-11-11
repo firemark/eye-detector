@@ -24,7 +24,7 @@ def compute_eye_3d(cap, depth_frame, face_normal, eye_coords: EyeCoordsPupil) ->
     diameter = 0.025
     center_of_eye = eye_xyz - face_normal * diameter / 2
     direction = to_unit_vector(pupil_xyz - center_of_eye)
-    return Eye3D(eye_xyz, pupil_xyz, direction)
+    return Eye3D(pupil_xyz, direction)
 
 
 def compute_eye_3d_net(cam: Cam, model: EnrichedModel, depth_frame, rot_matrix: Rotation, eye_coords: EyeCoords) -> Optional[Eye3D]:
@@ -44,14 +44,14 @@ def compute_eye_3d_net(cam: Cam, model: EnrichedModel, depth_frame, rot_matrix: 
     })
     direction = results[0].detach().numpy()
     direction = to_unit_vector(direction)
-    return Eye3D(eye_xyz, eye_xyz, direction)
+    return Eye3D(eye_xyz, direction)
 
 
 def update_pointer_coords(screen_box: ScreenBox, eyecache: EyeCache, eye_3d: Optional[Eye3D]):
     if eye_3d is None:
         return
 
-    local_xy = screen_box.intersect(eye_3d.direction, eye_3d.pupil_xyz)
+    local_xy = screen_box.intersect(eye_3d.direction, eye_3d.eye_xyz)
     if local_xy is None:
         return
 

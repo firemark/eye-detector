@@ -18,7 +18,6 @@ from eye_detector.train_gaze.dataset import get_transform, WIDTH, HEIGHT
 @dataclass
 class Eye3D:
     eye_xyz: np.ndarray
-    pupil_xyz: np.ndarray
     direction: np.ndarray
 
 @dataclass

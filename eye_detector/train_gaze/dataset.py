@@ -7,20 +7,27 @@ from torch.utils.data import Dataset, random_split
 from torch import FloatTensor
 from torchvision import transforms
 
-WIDTH = 64
-HEIGHT = 48
+WIDTH = 60
+HEIGHT = 40
+
+
+def get_transform(with_resize=True):
+    trans = [
+        #transforms.Grayscale(),
+        transforms.ToTensor(),
+        transforms.Normalize([0.5], [0.5]),
+    ]
+
+    if with_resize:
+        trans.insert(0, transforms.Resize((WIDTH, HEIGHT)))
+    return transforms.Compose(trans)
 
 
 class GazeDataset(Dataset):
 
     def __init__(self, root: str):
         self.paths = glob(f"{root}/**/*.png", recursive=True)
-        self.transform = transforms.Compose([
-            transforms.Resize((WIDTH, HEIGHT)),
-            transforms.Grayscale(),
-            transforms.ToTensor(),
-            transforms.Normalize([0.5], [0.5]),
-        ])
+        self.transform = get_transform()
 
     def __getitem__(self, index):
         image_filepath = self.paths[index]

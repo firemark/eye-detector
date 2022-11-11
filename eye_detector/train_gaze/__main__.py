@@ -16,8 +16,7 @@ def main(args):
     trainset, testset = create_dataset()
 
     net = Net()
-    train(trainset, net, max_epoch=args.epoch)
-    test_data(testset, net)
+    train(trainset, testset, test_data, net, max_epoch=args.epoch)
     torch.save(net.state_dict(), "outdata/net.pth")
     print('Finished Training')
 

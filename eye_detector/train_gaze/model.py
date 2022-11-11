@@ -1,8 +1,10 @@
+import torch
 import torch.nn as nn
 
 from .dataset import WIDTH, HEIGHT
 
-KERNEL_SIZE = 5
+FIRST_KERNEL_SIZE = 11
+SECOND_KERNEL_SIZE = 5
 
 
 class Net(nn.Module):
@@ -10,14 +12,14 @@ class Net(nn.Module):
     def __init__(self):
         super().__init__()
 
-        fc1_w = ((WIDTH - KERNEL_SIZE + 1) // 2 - KERNEL_SIZE + 1) // 2
-        fc1_h = ((HEIGHT - KERNEL_SIZE + 1) // 2 - KERNEL_SIZE + 1) // 2
+        fc1_w = ((WIDTH - FIRST_KERNEL_SIZE + 1) // 2 - SECOND_KERNEL_SIZE + 1) // 2
+        fc1_h = ((HEIGHT - FIRST_KERNEL_SIZE + 1) // 2 - SECOND_KERNEL_SIZE + 1) // 2
 
         self.img_stack = nn.Sequential(
-            nn.Conv2d(1, 6, KERNEL_SIZE),
+            nn.Conv2d(3, 6, FIRST_KERNEL_SIZE),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
-            nn.Conv2d(6, 16, KERNEL_SIZE),
+            nn.Conv2d(6, 16, SECOND_KERNEL_SIZE),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
             nn.Flatten(),
@@ -34,6 +36,11 @@ class Net(nn.Module):
         )
 
         self.final = nn.Bilinear(3, 60, 3)
+        # self.final_concat = nn.Bilinear(3, 60, 24)
+        # self.final_stack = nn.Sequential(
+        #     nn.ReLU(),
+        #     nn.Linear(24, 3),
+        # )
 
     def forward(self, x):
         x_rot_matrix = self.rot_stack(x["rot_matrix"])

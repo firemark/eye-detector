@@ -10,7 +10,7 @@ from eye_detector.capture_dlib.draw import (
     draw_landmarks,
     draw_text_pupil_coords,
     draw_3d_vec,
-    draw_axes,
+    draw_axes, draw_eye_rect,
 )
 
 
@@ -28,11 +28,14 @@ def loop(model: EnrichedModel, cap):
     left = EyeCoords.get_left(color_frame, model, landmarks)
     right = EyeCoords.get_right(color_frame, model, landmarks)
 
+    draw_eye_rect(color_frame, left)
+    draw_eye_rect(color_frame, right)
+
     left_3d = compute_eye_3d_net(cap, model, depth_frame, rot_matrix, left)
     right_3d = compute_eye_3d_net(cap, model, depth_frame, rot_matrix, right)
 
     update_pointer_coords(model.screen_box, model.eyecache_left, left_3d)
-    update_pointer_coords(model.screen_box, model.eyecache_right, right_3d)
+    update_pointer_coords(model.screen_box, model.eyecache_right, left_3d)
 
     draw_landmarks(color_frame, landmarks)
     draw_text_pupil_coords(model.screen_box, color_frame, "left ", shift=25, color=[0x00, 0xFF, 0x00], eyecache=model.eyecache_left)

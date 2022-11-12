@@ -3,13 +3,19 @@ from math import degrees
 import cv2
 import numpy as np
 
-from eye_detector.pupil_coords import EyeCoords
-from eye_detector.capture_dlib.models import EyeCache, EnrichedModel, ScreenBox
+from eye_detector.pupil_coords import EyeCoords as PupilEyeCoords
+from eye_detector.capture_dlib.models import EyeCoords, EyeCache, EnrichedModel, ScreenBox
 from eye_detector.capture_dlib.utils import to_unit_vector
 
 
 def draw_text(image, text, p, scale=1):
     cv2.putText(image, text, p, cv2.FONT_HERSHEY_SIMPLEX, scale * 0.5, 255)
+
+
+def draw_eye_rect(image, eye: EyeCoords, color=(0xFF, 0x00, 0x00)):
+    x = eye.x
+    y = eye.y
+    cv2.rectangle(image, (x.start, y.start), (x.stop, y.stop), color)
 
 
 def draw_rectangle(frame, model: EnrichedModel):
@@ -87,7 +93,7 @@ def draw_3d_vec(frame, cap, direction_xyz, point_xyz, length, color):
     cv2.line(frame, point_a.astype(int), point_b.astype(int), color, 2)
 
 
-def draw_pupil_mask(frame, coords: EyeCoords, color):
+def draw_pupil_mask(frame, coords: PupilEyeCoords, color):
     frame[coords.y, coords.x][coords.pupil_mask] = np.array(color, dtype=np.uint8)
 
 

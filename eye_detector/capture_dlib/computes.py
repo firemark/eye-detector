@@ -38,10 +38,10 @@ def compute_eye_3d_net(cam: Cam, model: EnrichedModel, depth_frame, rot_matrix: 
     transformed_eye = model.net_transform(eye_coords.image).reshape((1, 3, WIDTH, HEIGHT))
     rot_matrix_flat = rot_matrix.as_matrix().reshape((1, 9))
 
-    results = model.net({
-        "img": DoubleTensor(transformed_eye).float(),
-        "rot_matrix": FloatTensor(rot_matrix_flat),
-    })
+    results = model.net((
+        FloatTensor(rot_matrix_flat),
+        DoubleTensor(transformed_eye).float(),
+    ))
     direction = results[0].detach().numpy()
     direction = to_unit_vector(direction)
     return Eye3D(eye_xyz, direction)

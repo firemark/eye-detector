@@ -24,6 +24,8 @@ class Eye3D:
 class EyeCoords:
     image: np.ndarray
     centroid: Optional[np.ndarray]
+    x: slice
+    y: slice
 
     @classmethod
     def get_left(cls, img, model, landmarks):
@@ -31,6 +33,8 @@ class EyeCoords:
         return cls(
             image=cls.resize(eye),
             centroid=pupil_coords.get_eye_centroid_from_ranges(x, y),
+            x=x,
+            y=y,
         )
 
     @classmethod
@@ -39,6 +43,8 @@ class EyeCoords:
         return cls(
             image=cls.resize(eye),
             centroid=pupil_coords.get_eye_centroid_from_ranges(x, y),
+            x=x,
+            y=y,
         )
 
     @staticmethod
@@ -59,7 +65,7 @@ class EnrichedModel(Model):
             width=0.57,  # 0.57
             height=0.32,  # 0.32
         )
-        self.net_transform = get_transform(with_resize=False)
+        self.net_transform = get_transform()
         self.net = self.load_net()
 
     def load_net(self) -> Net:

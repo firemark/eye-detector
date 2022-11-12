@@ -1,5 +1,7 @@
-import torch
+from typing import Dict, Tuple
+
 import torch.nn as nn
+from torch import Tensor
 
 from .dataset import WIDTH, HEIGHT
 
@@ -35,14 +37,16 @@ class Net(nn.Module):
             nn.ReLU(),
         )
 
-        self.final = nn.Bilinear(3, 60, 3)
-        # self.final_concat = nn.Bilinear(3, 60, 24)
-        # self.final_stack = nn.Sequential(
-        #     nn.ReLU(),
-        #     nn.Linear(24, 3),
-        # )
+        # self.final = nn.Bilinear(3, 60, 3)
+        self.final_concat = nn.Bilinear(3, 60, 24)
+        self.final_stack = nn.Sequential(
+            nn.ReLU(),
+            nn.Linear(24, 3),
+        )
 
-    def forward(self, x):
-        x_rot_matrix = self.rot_stack(x["rot_matrix"])
-        x_img = self.img_stack(x["img"])
-        return self.final(x_rot_matrix, x_img)
+    def forward(self, x: Tuple[Tensor, Tensor]):
+        x_rot_matrix = self.rot_stack(x[0])
+        x_img = self.img_stack(x[1])
+        x_final = self.final_concat(x_rot_matrix, x_img)
+        return self.final_stack(x_final)
+        #return self.final(x_rot_matrix, x_img)

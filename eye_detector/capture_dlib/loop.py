@@ -32,7 +32,8 @@ def loop(model: EnrichedModel, cap):
     draw_eye_rect(color_frame, right)
 
     left_3d = compute_eye_3d_net(cap, model, depth_frame, rot_matrix, left)
-    right_3d = compute_eye_3d_net(cap, model, depth_frame, rot_matrix, right)
+    #right_3d = compute_eye_3d_net(cap, model, depth_frame, rot_matrix, right)
+    right_3d = None
 
     update_pointer_coords(model.screen_box, model.eyecache_left, left_3d)
     update_pointer_coords(model.screen_box, model.eyecache_right, left_3d)

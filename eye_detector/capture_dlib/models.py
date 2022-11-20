@@ -116,8 +116,6 @@ class ScreenBox:
         self.plane_offset = -self.normal.dot(points[0])  # D parameter
         self.inv_rotation = rotation.inv()
 
-        print(self.center_position)
-
     def intersect(self, direction, position):
         # We have equations:
         # (x,y,z) = direction * t + position

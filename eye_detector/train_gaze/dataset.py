@@ -72,10 +72,9 @@ class MPIIIGazeDataset(Dataset):
     def __init__(self, root: str):
         annotation_paths = glob(f"{root}/Data/Original/p*/day*")
         self.face_model = loadmat(f"{root}/6 points-based face model.mat")['model'].transpose()
-        self.cache = list(chain.from_iterable(
-            self.load_annotation_and_images(filepath)
-            for filepath in annotation_paths
-        ))
+        self.paths = list(x for i, x in enumerate(self.get_paths(annotation_paths)) if i % 10 == 0)
+        self.camera_cache = {}
+        self.cache = {}
         trans = [
             #transforms.RandomCrop(size=(76, 114)),
             #transforms.ColorJitter(hue=0.02, saturation=0.02, contrast=0.02),
@@ -85,22 +84,37 @@ class MPIIIGazeDataset(Dataset):
         self.transform = torch.jit.script(Sequential(*trans))
 
     def __getitem__(self, index):
-        rot_matrix, img, gaze = self.cache[index]
+        obj = self.cache.get(index)
+        if obj is None:
+            dirpath, annotation, img_path = self.paths[index]
+            obj = self.load_image(dirpath, annotation, img_path)
+            self.cache[index] = obj
+
+        rot_matrix, img, gaze = obj
         return (rot_matrix, self.transform(img)), gaze
 
-    def load_annotation_and_images(self, dirpath):
-        with open(f"{dirpath}/annotation.txt") as file:
-            camera = loadmat(f"{dirpath}/../Calibration/Camera.mat")['cameraMatrix']
-            for index, line in enumerate(file, start=1):
-                if index % 4 != 0:
-                    continue
-                yield self.load_image(index, dirpath, annotation=line.split(), camera=camera)
+    def __len__(self) -> int:
+        return len(self.paths)
 
-    def load_image(self, index, dirpath, annotation, camera):
-        image_filepath = f"{dirpath}/{index:04d}.jpg"
+    def get_paths(self, dirpaths):
+        for dirpath in dirpaths:
+            with open(f"{dirpath}/annotation.txt") as file:
+                for index, line in enumerate(file, start=1):
+                    yield dirpath, line.split(), f"{dirpath}/{index:04d}.jpg"
+
+    def load_camera(self, dirpath):
+        camera_path = f"{dirpath}/../Calibration/Camera.mat"
+        camera = self.camera_cache.get(camera_path)
+        if camera is None:
+            camera = loadmat(camera_path)['cameraMatrix']
+            self.camera_cache[camera_path] = camera
+        return camera
+
+    def load_image(self, dirpath, annotation, image_filepath):
         with open(image_filepath, 'rb') as file:
             img = Image.open(file).convert('RGB')
 
+        camera = self.load_camera(dirpath)
         head_rot_vec = [float(x) for x in annotation[29:32]]
         head_tra_vec = [float(x) for x in annotation[32:35]]
         head_rot_mat = Rotation.from_rotvec(head_rot_vec)
@@ -129,9 +143,6 @@ class MPIIIGazeDataset(Dataset):
         tensor_head_rot_mat = FloatTensor(head_rot_mat.as_matrix().reshape(9))
         tensor_gaze = FloatTensor(gaze)
         return tensor_head_rot_mat, tensor_img, tensor_gaze
-
-    def __len__(self) -> int:
-        return len(self.cache)
 
 
 def create_dataset():

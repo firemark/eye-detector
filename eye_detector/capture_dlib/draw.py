@@ -40,12 +40,12 @@ def draw_rectangle(frame, model: EnrichedModel):
 
 
 def draw_text_pupil_coords(screen_box: ScreenBox, frame, prefix, shift, color: list, eyecache: EyeCache):
-    color = np.ndarray(color, dtype=np.uint8)
+    color = np.array(color, dtype=np.uint8)
     for i, (x, y) in enumerate(zip(eyecache.x, eyecache.y)):
         screen_point = screen_box.point_to_screen(frame, x, y)
         if screen_point is None:
             continue
-        blend_color = (color * i / len(eyecache.x)).astype(int).tolist()
+        blend_color = (color * i / len(eyecache.x)).astype(np.uint8).tolist()
         cv2.circle(frame, screen_point, 5, blend_color, cv2.FILLED)
 
     if len(eyecache.x) > 0:

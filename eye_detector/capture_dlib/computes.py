@@ -45,7 +45,7 @@ def compute_eye_3d_net(cam: Cam, model: EnrichedModel, depth_frame, rot_matrix: 
         FloatTensor(transformed_eye),
     ))
     direction = results[0].detach().numpy()
-    direction = to_unit_vector(direction)
+    direction = -to_unit_vector(direction)
     return Eye3D(eye_xyz, direction)
 
 

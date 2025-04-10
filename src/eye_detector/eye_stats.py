@@ -1,16 +1,11 @@
 from time import time
 from glob import glob
-from random import shuffle
 from csv import writer
 
-import numpy as np
 from skimage.io import imread
-from skimage.color import rgb2hsv
-from skimage.draw import line
 from matplotlib import pyplot as plt
-from matplotlib.widgets import Button
 
-from eye_detector.eye_data_conv_dlib import Model
+from eye_detector.dlib_model import Model
 from eye_detector import pupil_coords
 
 LABELS_PATH = "indata/to_label/*"

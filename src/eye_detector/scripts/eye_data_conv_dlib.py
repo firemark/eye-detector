@@ -1,20 +1,12 @@
 from glob import glob
-from shutil import rmtree
 from os import mkdir
-from os.path import basename, isfile
 from contextlib import suppress
+from posixpath import basename, isfile
 
-from numpy import uint8
 from skimage.io import imread, imsave
-from skimage.transform import resize
-from skimage.measure import label, regionprops
 
-from eye_detector.model import FullModel
 from eye_detector.const import CLASSES
-
-
-FACE_SCALES = [3.0]
-EYE_SCALES = [1.5]
+from eye_detector.dlib_model import Model
 
 
 def load(filepath):
@@ -28,18 +20,14 @@ def gen_filepath_to_save(klass, filepath):
 
 def save(filepath_to_save, img):
     img_to_save = img * 0xFF
-    imsave(filepath_to_save, img_to_save.astype(uint8))
+    imsave(filepath_to_save, img_to_save.astype(np.uint8))
 
 
 if __name__ == "__main__":
     with suppress(FileExistsError):
         mkdir("middata/transformed_label")
 
-    model = FullModel(
-        face_scales=FACE_SCALES,
-        eye_scales=EYE_SCALES,
-    )
-
+    model = Model()
     tot = 0
     skip = 0
     succ = 0

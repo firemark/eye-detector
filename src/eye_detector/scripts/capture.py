@@ -9,7 +9,7 @@ from torchvision.transforms import ToPILImage
 
 from eye_detector.model import FullModel
 from eye_detector.cam_func import init_win, del_win, draw_it
-from eye_detector.train_net import Net, transform
+from src.eye_detector.scripts.train_net import Net, transform
 from eye_detector.const import CLASSES
 
 

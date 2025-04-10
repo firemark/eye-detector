@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "eye_detector"
+version = "0.2"
+license = {file = "LICENSE"} 
+readme = "README.md"
+
+[project.scripts]
+eye_detector = "eye_detector.scripts.main_cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/eye_detector"]
+

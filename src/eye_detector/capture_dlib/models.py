@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from collections import deque
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 import torch
@@ -9,7 +9,7 @@ from skimage.transform import resize
 
 from eye_detector import pupil_coords
 from eye_detector.model import load_model
-from eye_detector.eye_data_conv_dlib import Model
+from eye_detector.dlib_model import Model
 
 from eye_detector.train_gaze.model import Net
 from eye_detector.train_gaze.dataset import get_transform, WIDTH, HEIGHT
@@ -28,8 +28,7 @@ class EyeCoords:
     y: slice
 
     @classmethod
-    def get_left(cls, img, model, landmarks):
-        eye, x, y = model.get_left_eye(img, landmarks)
+    def create(cls, eye: np.ndarray, x: slice, y: slice):
         return cls(
             image=cls.resize(eye),
             centroid=pupil_coords.get_eye_centroid_from_ranges(x, y),
@@ -38,14 +37,12 @@ class EyeCoords:
         )
 
     @classmethod
+    def get_left(cls, img, model, landmarks):
+        return cls.create(*model.get_left_eye(img, landmarks))
+
+    @classmethod
     def get_right(cls, img, model, landmarks):
-        eye, x, y = model.get_right_eye(img, landmarks)
-        return cls(
-            image=cls.resize(eye),
-            centroid=pupil_coords.get_eye_centroid_from_ranges(x, y),
-            x=x,
-            y=y,
-        )
+        return cls.create(*model.get_right_eye(img, landmarks))
 
     @staticmethod
     def resize(eye):
@@ -56,7 +53,7 @@ class EnrichedModel(Model):
 
     def __init__(self):
         super().__init__()
-        self.pupil_coords_model = load_model("eye-pupil")
+        #self.pupil_coords_model = load_model("eye-pupil")
         self.eyecache_left = EyeCache()
         self.eyecache_right = EyeCache()
         self.screen_box = ScreenBox(

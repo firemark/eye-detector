@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<robot name="eye_detector">
+  <material name="camera">
+    <color rgba="0.5 0.5 0.5 1"/>
+  </material>
+  <material name="screen">
+    <color rgba="0.2 0.8 0.5 0.6"/>
+  </material>
+
+  <link name="base_link">
+  </link>
+  <link name="camera_link">
+    <visual>
+      <geometry>
+        <box size="0.025 0.090 0.025" />
+      </geometry>
+      <material name="camera" />
+    </visual>
+  </link>
+
+  <link name="screen">
+    <visual>
+      <geometry>
+        <box size="0.01 0.57 0.32" />
+      </geometry>
+    <origin xyz="0.0 0.0 0.16"/>
+      <material name="screen" />
+    </visual>
+  </link>
+
+  <joint name="base_to_camera" type="fixed">
+    <parent link="base_link"/>
+    <child link="camera_link"/>
+  </joint>
+
+  <joint name="base_to_screen" type="fixed">
+    <parent link="base_link"/>
+    <child link="screen"/>
+    <origin xyz="-0.025 0.0 0.0"/>
+  </joint>
+
+</robot>

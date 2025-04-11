@@ -9,7 +9,7 @@ from skimage.draw import line
 from matplotlib import pyplot as plt
 from matplotlib.widgets import Button
 
-from eye_detector.eye_data_conv_dlib import Model
+from eye_detector.dlib_model import Model
 from eye_detector import pupil_coords
 
 IMAGES_PATH = "indata/to_label/*/*.png"

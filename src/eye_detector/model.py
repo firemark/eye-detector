@@ -1,6 +1,5 @@
 import pickle
 
-import joblib
 import numpy as np
 from skimage.transform import resize
 from skimage.measure import label, regionprops
@@ -34,6 +33,7 @@ def load_transform(name):
 
 
 def load_window(name, model=None, transform=None):
+    import joblib
     model = model or load_model(name)
     transform = transform or load_transform(name)
 

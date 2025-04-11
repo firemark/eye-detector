@@ -12,12 +12,12 @@ from eye_detector.capture_dlib.models import EyeCache, Eye3D, ScreenBox, EyeCoor
 from eye_detector.train_gaze.dataset import HEIGHT, WIDTH
 
 
-def compute_eye_3d(cap, depth_frame, face_normal, eye_coords: EyeCoordsPupil) -> Optional[Eye3D]:
+def compute_eye_3d(to_3d, face_normal, eye_coords: EyeCoordsPupil) -> Optional[Eye3D]:
     if face_normal is None or eye_coords.eye_centroid is None or eye_coords.pupil_centroid is None:
         return None
 
-    eye_xyz = cap.to_3d(eye_coords.eye_centroid, depth_frame)
-    pupil_xyz = cap.to_3d(eye_coords.pupil_centroid, depth_frame)
+    eye_xyz = to_3d(eye_coords.eye_centroid)
+    pupil_xyz = to_3d(eye_coords.pupil_centroid)
 
     if eye_xyz is None or pupil_xyz is None:
         return None
@@ -28,11 +28,11 @@ def compute_eye_3d(cap, depth_frame, face_normal, eye_coords: EyeCoordsPupil) ->
     return Eye3D(pupil_xyz, direction)
 
 
-def compute_eye_3d_net(cam: Cam, model: EnrichedModel, depth_frame, rot_matrix: Rotation, eye_coords: EyeCoords) -> Optional[Eye3D]:
+def compute_eye_3d_net(model: EnrichedModel, to_3d, rot_matrix: Rotation, eye_coords: EyeCoords) -> Optional[Eye3D]:
     if rot_matrix is None or eye_coords.centroid is None:
         return None
 
-    eye_xyz = cam.to_3d(eye_coords.centroid, depth_frame)
+    eye_xyz = to_3d(eye_coords.centroid)
     if eye_xyz is None:
         return None
 
@@ -60,9 +60,9 @@ def update_pointer_coords(screen_box: ScreenBox, eyecache: EyeCache, eye_3d: Opt
     eyecache.update(local_xy[0], local_xy[1])
 
 
-def compute_face_normal(landmarks, cap, depth_frame):
+def compute_face_normal(landmarks, to_3d):
     points = [
-        cap.to_3d(np.array([p.x, p.y]), depth_frame) for p in [
+        to_3d([p.x, p.y]) for p in [
             landmarks.part(8),  # Chin
             landmarks.part(45),  # Right eye right corner
             landmarks.part(36),  # Left eye left corner
@@ -75,9 +75,9 @@ def compute_face_normal(landmarks, cap, depth_frame):
     return np.cross(points[1] - points[0], points[2] - points[1])
 
 
-def compute_rotation_matrix1(landmarks, cap, depth_frame) -> Rotation:
+def compute_rotation_matrix1(landmarks, to_3d) -> Rotation:
     points = [
-        cap.to_3d(np.array([p.x, p.y]), depth_frame) for p in [
+        to_3d([p.x, p.y]) for p in [
             landmarks.part(8),  # Chin
             landmarks.part(45),  # Right eye right corner
             landmarks.part(36),  # Left eye left corner
@@ -105,9 +105,9 @@ def compute_rotation_matrix1(landmarks, cap, depth_frame) -> Rotation:
     rotation, _ = Rotation.align_vectors(points, points_to_rotate)
     return rotation
 
-def compute_rotation_matrix2(landmarks, cap, depth_frame) -> Rotation:
+def compute_rotation_matrix2(landmarks, to_3d) -> Rotation:
     points = [
-        cap.to_3d(np.array([p.x, p.y]), depth_frame) for p in [
+        to_3d([p.x, p.y]) for p in [
             landmarks.part(5),  # Left chin
             landmarks.part(11),  # Right chin
             landmarks.part(36),  # Left eye left corner
@@ -138,9 +138,9 @@ def compute_rotation_matrix2(landmarks, cap, depth_frame) -> Rotation:
     return rotation
 
 
-def compute_rotation_matrix3(landmarks, cap, depth_frame) -> Optional[Rotation]:
+def compute_rotation_matrix3(landmarks, to_3d) -> Optional[Rotation]:
     points = [
-        cap.to_3d(np.array([p.x, p.y]), depth_frame) for p in [
+        to_3d([p.x, p.y]) for p in [
             landmarks.part(30),
             landmarks.part(8),
             landmarks.part(36),

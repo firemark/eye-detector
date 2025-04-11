@@ -23,7 +23,7 @@ def loop(model: EnrichedModel, cap):
     if landmarks is None:
         return color_frame
 
-    rot_matrix = compute_rotation_matrix1(landmarks, cap, depth_frame)
+    rot_matrix = compute_rotation_matrix1(landmarks, lambda p: cap.to_3d([p.x, p.y], depth_frame))
 
     left = EyeCoords.get_left(color_frame, model, landmarks)
     right = EyeCoords.get_right(color_frame, model, landmarks)

@@ -23,7 +23,7 @@
       <geometry>
         <box size="0.01 0.57 0.32" />
       </geometry>
-    <origin xyz="0.0 0.0 0.16"/>
+      <origin xyz="0.0 0.0 0.16"/>
       <material name="screen" />
     </visual>
   </link>

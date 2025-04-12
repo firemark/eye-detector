@@ -12,14 +12,9 @@ import numpy as np
 import pyrealsense2 as rs
 
 from eye_detector.capture_dlib.models import EnrichedModel, Eye3D, EyeCoords
-from eye_detector.capture_dlib.computes import compute_eye_3d_net, compute_rotation_matrix1
+from eye_detector.capture_dlib.computes import compute_eye_3d, compute_eye_3d_net, compute_face_normal, compute_rotation_matrix1
 
-# from cv_bridge import CvBridge
-
-# depth sensor_msgs/msg/Image
-# color sensor_msgs/msg/Image
-# depth_to_color realsense2_camera_msgs/msg/Extrinsics
-# sensor_msgs/msg/CameraInfo
+from eye_detector import pupil_coords
 
 
 class NetModelNode(Node):
@@ -32,34 +27,29 @@ class NetModelNode(Node):
         self.depth_frame = None
         self.intrinsics = None
 
+        self.declare_parameter('model', rclpy.Parameter.Type.STRING) 
+        model = self.get_parameter('model', 'default').strip().lower()
+
+        self._calc_cb = self._calc_legacy if model == 'legacy' else self._calc
+
         self.color_sub = self.create_subscription(
             Image,
             "~/color",
-            #"/camera/D435/color/image_raw",
             self.color_cb,
             qos_profile_sensor_data,
         )
         self.depth_sub = self.create_subscription(
             Image,
             "~/depth",
-            #"/camera/D435/depth/image_raw",
             self.depth_cb,
             qos_profile_sensor_data,
         )
         self.camera_info_sub = self.create_subscription(
             CameraInfo,
             "~/camera_info",
-            #"/camera/D435/depth/image_raw",
             self.camera_info_cb,
             1,
         )
-        # self.depth_to_color_sub = self.create_subscription(
-        #     Image,
-        #     "~/depth_to_color",
-        #     #"/camera/D435/depth/image_raw",
-        #     self.depth_to_color_sub,
-        #     qos_profile_sensor_data,
-        # )
 
 
         self.left_pub = self.create_publisher(
@@ -75,7 +65,7 @@ class NetModelNode(Node):
 
     def color_cb(self, msg):
         self.color_frame = self.bridge.imgmsg_to_cv2(msg)
-        self._calc()
+        self._calc_cb()
 
     def depth_cb(self, msg):
         self.depth_frame = self.bridge.imgmsg_to_cv2(msg)
@@ -109,6 +99,31 @@ class NetModelNode(Node):
         find_and_pub(self.model.get_left_eye, self.left_pub)
         find_and_pub(self.model.get_right_eye, self.right_pub)
 
+    def _calc_legacy(self):
+        if not self.__is_ready():
+            return
+
+        landmarks = self.model.detect_and_get_landmarks(self.color_frame)
+        if landmarks is None:
+            return
+
+        normal = compute_face_normal(landmarks, self.__to_3d)
+        find_and_pub = partial(self.__find_and_pub_legacy, landmarks, normal)
+        find_and_pub(pupil_coords.get_left_coords, self.left_pub)
+        find_and_pub(pupil_coords.get_right_coords, self.right_pub)
+
+    def __find_and_pub(self, landmarks, rot_matrix, cb, pub):
+        eye = EyeCoords.create(*cb(self.color_frame, landmarks))
+        eye_3d = compute_eye_3d_net(self.model, self.__to_3d, rot_matrix, eye)
+        if eye_3d:
+            pub.publish(self.__to_pose(eye_3d))
+
+    def __find_and_pub_legacy(self, landmarks, face_normal, cb, pub):
+        eye = cb(self.color_frame, self.model, landmarks)
+        eye_3d = compute_eye_3d(self.__to_3d, face_normal, eye)
+        if eye_3d:
+            pub.publish(self.__to_pose(eye_3d))
+
     def __is_ready(self):
         return all(
             [
@@ -125,12 +140,6 @@ class NetModelNode(Node):
         x, y, z = rs.rs2_deproject_pixel_to_point(self.intrinsics, p, depth * 1e-3)
         return np.array([z, -x, -y])
 
-    def __find_and_pub(self, landmarks, rot_matrix, cb, pub):
-        eye = EyeCoords.create(*cb(self.color_frame, landmarks))
-        eye_3d = compute_eye_3d_net(self.model, self.__to_3d, rot_matrix, eye)
-        if eye_3d:
-            pub.publish(self.__to_pose(eye_3d))
-
     def __to_pose(self, eye3d: Eye3D) -> PoseStamped:
         pose = PoseStamped()
         pose.header.frame_id = "camera_color_frame"
@@ -140,7 +149,7 @@ class NetModelNode(Node):
         pose.pose.position.y = eye3d.eye_xyz[1]
         pose.pose.position.z = eye3d.eye_xyz[2]
 
-        quaternion = Rotation.from_rotvec(eye3d.direction).as_quat()
+        quaternion = Rotation.from_rotvec(-eye3d.direction).as_quat()
         pose.pose.orientation.x = quaternion[1]
         pose.pose.orientation.y = quaternion[2]
         pose.pose.orientation.z = quaternion[3]

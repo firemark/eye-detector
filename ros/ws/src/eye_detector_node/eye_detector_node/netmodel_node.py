@@ -1,4 +1,5 @@
 from functools import partial
+import cv2
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
@@ -11,7 +12,7 @@ from scipy.spatial.transform import Rotation
 import numpy as np
 import pyrealsense2 as rs
 
-from eye_detector.capture_dlib.models import EnrichedModel, Eye3D, EyeCoords
+from eye_detector.capture_dlib.models import EnrichedModel, Eye3D, EyeCoords, NetModel
 from eye_detector.capture_dlib.computes import compute_eye_3d, compute_eye_3d_net, compute_face_normal, compute_rotation_matrix1
 
 from eye_detector import pupil_coords
@@ -23,6 +24,8 @@ class NetModelNode(Node):
         super().__init__("netmodel")
         self.bridge = CvBridge()
         self.model = EnrichedModel()
+        self.left_model = NetModel("outdata/net_left.pth")
+        self.right_model = NetModel("outdata/net_right.pth")
         self.color_frame = None
         self.depth_frame = None
         self.intrinsics = None
@@ -63,15 +66,21 @@ class NetModelNode(Node):
         )
 
     def color_cb(self, msg):
-        self.color_frame = self.bridge.imgmsg_to_cv2(msg)
+        self.color_frame = cv2.flip(self.bridge.imgmsg_to_cv2(msg), 1)
         self._calc_cb()
 
     def depth_cb(self, msg):
-        self.depth_frame = self.bridge.imgmsg_to_cv2(msg)
+        self.depth_frame = cv2.flip(self.bridge.imgmsg_to_cv2(msg), 1)
 
     def camera_info_cb(self, msg):
         # Thanks to:
         # https://medium.com/@yasuhirachiba/converting-2d-image-coordinates-to-3d-coordinates-using-ros-intel-realsense-d435-kinect-88621e8e733a
+        # self.intrinsics = np.array([
+        #     [1/msg.k[0], 0, -msg.k[2]],
+        #     [0, 1/msg.k[4], -msg.k[5]],
+        #     [0, 0, 1],
+        # ])
+
         intrinsics = rs.intrinsics()
         intrinsics.width = msg.width
         intrinsics.height = msg.height
@@ -95,8 +104,8 @@ class NetModelNode(Node):
         rot_matrix = compute_rotation_matrix1(landmarks, self.__to_3d)
 
         find_and_pub = partial(self.__find_and_pub, landmarks, rot_matrix)
-        find_and_pub(self.model.get_left_eye, self.left_pub)
-        find_and_pub(self.model.get_right_eye, self.right_pub)
+        find_and_pub(self.model.get_left_eye, self.left_model, self.left_pub)
+        find_and_pub(self.model.get_right_eye, self.right_model, self.right_pub)
 
     def _calc_legacy(self):
         if not self.__is_ready():
@@ -111,9 +120,9 @@ class NetModelNode(Node):
         find_and_pub(pupil_coords.get_left_coords, self.left_pub)
         find_and_pub(pupil_coords.get_right_coords, self.right_pub)
 
-    def __find_and_pub(self, landmarks, rot_matrix, cb, pub):
+    def __find_and_pub(self, landmarks, rot_matrix, cb, model: NetModel, pub):
         eye = EyeCoords.create(*cb(self.color_frame, landmarks))
-        eye_3d = compute_eye_3d_net(self.model, self.__to_3d, rot_matrix, eye)
+        eye_3d = compute_eye_3d_net(model, self.__to_3d, rot_matrix, eye)
         if eye_3d:
             pub.publish(self.__to_pose(eye_3d))
 
@@ -136,6 +145,8 @@ class NetModelNode(Node):
         depth = self.depth_frame[int(p[1]), int(p[0])]  # type: ignore
         if depth <= 0.0:
             return None
+        # vec = np.array([p[0], p[1], 1]) * depth * 1e-3
+        # x, y, z = self.intrinsics @ vec
         x, y, z = rs.rs2_deproject_pixel_to_point(self.intrinsics, p, depth * 1e-3)
         return np.array([z, -x, -y])
 
@@ -148,7 +159,7 @@ class NetModelNode(Node):
         pose.pose.position.y = eye3d.eye_xyz[1]
         pose.pose.position.z = eye3d.eye_xyz[2]
 
-        quaternion = Rotation.from_rotvec(-eye3d.direction).as_quat()
+        quaternion = Rotation.from_rotvec(eye3d.direction).as_quat()
         pose.pose.orientation.x = quaternion[1]
         pose.pose.orientation.y = quaternion[2]
         pose.pose.orientation.z = quaternion[3]

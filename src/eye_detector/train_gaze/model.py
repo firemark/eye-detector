@@ -37,7 +37,6 @@ class Net(nn.Module):
             nn.ReLU(),
         )
 
-        # self.final = nn.Bilinear(3, 60, 3)
         self.final_concat = nn.Bilinear(3, 60, 24)
         self.final_stack = nn.Sequential(
             nn.ReLU(),
@@ -49,4 +48,3 @@ class Net(nn.Module):
         x_img = self.img_stack(x[1])
         x_final = self.final_concat(x_rot_matrix, x_img)
         return self.final_stack(x_final)
-        #return self.final(x_rot_matrix, x_img)

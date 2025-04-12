@@ -62,12 +62,17 @@ class EnrichedModel(Model):
             width=0.57,  # 0.57
             height=0.32,  # 0.32
         )
-        self.net_transform = get_transform()
-        self.net = self.load_net()
 
-    def load_net(self) -> Net:
+
+class NetModel:
+
+    def __init__(self, net_path="outdata/net.pth"):
+        self.net_transform = get_transform()
+        self.net = self.load_net(net_path)
+
+    def load_net(self, net_path: str) -> Net:
         net = Net()
-        net.load_state_dict(torch.load("outdata/net.pth"))
+        net.load_state_dict(torch.load(net_path))
         net.eval()
         return net
 

@@ -1,14 +1,13 @@
 from glob import glob
-from itertools import chain
 from pickle import load as pickle_load
-from typing import List
+from typing import List, Literal
 
 from PIL import Image
 from scipy.io import loadmat
 from scipy.spatial.transform import Rotation
 import numpy as np
 
-from torch.utils.data import Dataset, random_split
+from torch.utils.data import Dataset, ConcatDataset, random_split
 from torch import FloatTensor
 from torch.nn import Module, Sequential
 from torchvision import transforms
@@ -39,9 +38,9 @@ class SynthGazeDataset(Dataset):
             for filepath in paths
         ]
         trans = [
-            #transforms.RandomCrop(size=(76, 114)),
-            #transforms.ColorJitter(hue=0.02, saturation=0.02, contrast=0.02),
-            #transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 0.5)),
+            # transforms.RandomCrop(size=0.95),
+            transforms.ColorJitter(hue=0.02, saturation=0.02, contrast=0.02),
+            transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 0.5)),
             transforms.Resize((WIDTH, HEIGHT)),
         ] + get_transform_components()
         self.transform = torch.jit.script(Sequential(*trans))
@@ -57,7 +56,7 @@ class SynthGazeDataset(Dataset):
             metadata = pickle_load(file)
 
         with open(image_filepath, 'rb') as file:
-            img = transforms.ToTensor()(Image.open(file).convert('rGR'))
+            img = transforms.ToTensor()(Image.open(file).convert('RGB'))
 
         gaze = FloatTensor(metadata['look_vec'])
         rot_matrix = FloatTensor(metadata['head_pose'])
@@ -69,16 +68,17 @@ class SynthGazeDataset(Dataset):
 
 class MPIIIGazeDataset(Dataset):
 
-    def __init__(self, root: str):
+    def __init__(self, root: str, eye: Literal["left", "right"]):
         annotation_paths = glob(f"{root}/Data/Original/p*/day*")
         self.face_model = loadmat(f"{root}/6 points-based face model.mat")['model'].transpose()
         self.paths = list(x for i, x in enumerate(self.get_paths(annotation_paths)) if i % 10 == 0)
         self.camera_cache = {}
         self.cache = {}
+        self.eye = eye
         trans = [
-            #transforms.RandomCrop(size=(76, 114)),
-            #transforms.ColorJitter(hue=0.02, saturation=0.02, contrast=0.02),
-            #transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 0.5)),
+            # transforms.RandomCrop(size=0.95),
+            transforms.ColorJitter(hue=0.02, saturation=0.02, contrast=0.02),
+            transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 0.5)),
             transforms.Resize((WIDTH, HEIGHT)),
         ] + get_transform_components()
         self.transform = torch.jit.script(Sequential(*trans))
@@ -122,21 +122,18 @@ class MPIIIGazeDataset(Dataset):
         face_model_2d[:, 0] = face_model_2d[:, 0] * (camera[0, 0] / face_model_2d[:, 2]) + camera[0, 2]
         face_model_2d[:, 1] = face_model_2d[:, 1] * (camera[1, 1] / face_model_2d[:, 2]) + camera[1, 2]
 
-        eye_left, eye_right = face_model_2d[2:4]
-        eye_center = ((eye_left + eye_right) / 2.0).astype(int)
-        size = abs(eye_left[0] - eye_right[0])
-        w_size = int(size * 1.5)
-        h_size = int(size)
-
-        eye_img = img.crop((
-            eye_center[0] - w_size // 2,
-            eye_center[1] - h_size // 2,
-            eye_center[0] + w_size // 2,
-            eye_center[1] + h_size // 2,
-        ))
+        match self.eye:
+            case "left":
+                eye_img = self.__get_eye_img(img, face_model_2d[0], face_model_2d[1])
+                eye_position = np.array([float(x) for x in annotation[35:38]])
+            case "right":
+                eye_img = self.__get_eye_img(img, face_model_2d[2], face_model_2d[3])
+                eye_position = np.array([float(x) for x in annotation[38:41]])
+            case eye:
+                raise RuntimeError(f"Wrong eye: {eye}")
 
         gaze_target = np.array([float(x) for x in annotation[26:29]])
-        gaze = np.array([float(x) for x in annotation[35:38]]) - gaze_target
+        gaze = eye_position - gaze_target
         gaze /= np.linalg.norm(gaze)
 
         tensor_img = transforms.ToTensor()(eye_img)
@@ -144,10 +141,22 @@ class MPIIIGazeDataset(Dataset):
         tensor_gaze = FloatTensor(gaze)
         return tensor_head_rot_mat, tensor_img, tensor_gaze
 
+    def __get_eye_img(self, img, left, right):
+        center = ((left + right) / 2.0).astype(int)
+        size = abs(left[0] - right[0])
+        w_size = int(size * 1.5)
+        h_size = int(size)
+        return img.crop((
+            center[0] - w_size // 2,
+            center[1] - h_size // 2,
+            center[0] + w_size // 2,
+            center[1] + h_size // 2,
+        ))
 
-def create_dataset():
-    #dataset = SynthGazeDataset(root="indata/SynthEyes_data")
-    dataset = MPIIIGazeDataset(root="indata/MPIIGaze")
+
+def create_dataset(eye):
+    # dataset = SynthGazeDataset(root="indata/SynthEyes_data")
+    dataset = MPIIIGazeDataset(root="indata/MPIIGaze", eye=eye)
     size = len(dataset)
     train_size = int(size * 0.8)
     test_size = size - train_size

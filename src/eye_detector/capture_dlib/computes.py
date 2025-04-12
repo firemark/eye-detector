@@ -8,7 +8,7 @@ from torch import FloatTensor, DoubleTensor
 from eye_detector.cam_func import Cam
 from eye_detector.pupil_coords import EyeCoords as EyeCoordsPupil
 from eye_detector.capture_dlib.utils import to_unit_vector
-from eye_detector.capture_dlib.models import EyeCache, Eye3D, ScreenBox, EyeCoords, EnrichedModel
+from eye_detector.capture_dlib.models import EyeCache, Eye3D, NetModel, ScreenBox, EyeCoords, EnrichedModel
 from eye_detector.train_gaze.dataset import HEIGHT, WIDTH
 
 
@@ -28,7 +28,7 @@ def compute_eye_3d(to_3d, face_normal, eye_coords: EyeCoordsPupil) -> Optional[E
     return Eye3D(pupil_xyz, direction)
 
 
-def compute_eye_3d_net(model: EnrichedModel, to_3d, rot_matrix: Rotation, eye_coords: EyeCoords) -> Optional[Eye3D]:
+def compute_eye_3d_net(model: NetModel, to_3d, rot_matrix: Rotation, eye_coords: EyeCoords) -> Optional[Eye3D]:
     if rot_matrix is None or eye_coords.centroid is None:
         return None
 

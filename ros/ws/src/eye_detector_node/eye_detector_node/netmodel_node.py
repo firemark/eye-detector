@@ -27,8 +27,8 @@ class NetModelNode(Node):
         self.depth_frame = None
         self.intrinsics = None
 
-        self.declare_parameter('model', rclpy.Parameter.Type.STRING) 
-        model = self.get_parameter('model', 'default').strip().lower()
+        self.declare_parameter('model', 'default') 
+        model = self.get_parameter('model').value.strip().lower()
 
         self._calc_cb = self._calc_legacy if model == 'legacy' else self._calc
 
@@ -50,7 +50,6 @@ class NetModelNode(Node):
             self.camera_info_cb,
             1,
         )
-
 
         self.left_pub = self.create_publisher(
             PoseStamped,

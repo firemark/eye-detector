@@ -20,8 +20,7 @@ RUN apt-get update -y && apt-get install -y \
 RUN python3 -m pip install \
   dlib \
   torch \
-  torchvision \
-  pyrealsense2
+  torchvision
  
 # Create Colcon workspace with external dependencies
 RUN mkdir -p /ws/src

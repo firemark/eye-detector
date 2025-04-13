@@ -20,13 +20,13 @@ def main(args):
 
     print("JITing neural network…")
     net = Net()
-    example_input = [(torch.rand(1, 9), torch.rand(1, 3, WIDTH, HEIGHT))]
+    example_input = [(torch.rand(1, 9), torch.rand(1, 3, WIDTH, HEIGHT), torch.rand(1, 3, WIDTH, HEIGHT))]
     net = torch.jit.trace(net, example_input)
 
     print("Training…")
     train(trainset, testset, test_data, net, max_epoch=args.epoch)
     print("Saving…")
-    torch.save(net.state_dict(), f"outdata/net_{args.eye}.pth")
+    torch.save(net.state_dict(), f"outdata/net.pth")
     print('Finished Training')
 
 

@@ -90,8 +90,8 @@ class MPIIIGazeDataset(Dataset):
             obj = self.load_image(dirpath, annotation, img_path)
             self.cache[index] = obj
 
-        rot_matrix, img, gaze = obj
-        return (rot_matrix, self.transform(img)), gaze
+        rot_matrix, left_img, right_img, gaze = obj
+        return (rot_matrix, self.transform(left_img), self.transform(right_img)), gaze
 
     def __len__(self) -> int:
         return len(self.paths)
@@ -122,24 +122,22 @@ class MPIIIGazeDataset(Dataset):
         face_model_2d[:, 0] = face_model_2d[:, 0] * (camera[0, 0] / face_model_2d[:, 2]) + camera[0, 2]
         face_model_2d[:, 1] = face_model_2d[:, 1] * (camera[1, 1] / face_model_2d[:, 2]) + camera[1, 2]
 
-        match self.eye:
-            case "left":
-                eye_img = self.__get_eye_img(img, face_model_2d[0], face_model_2d[1])
-                eye_position = np.array([float(x) for x in annotation[35:38]])
-            case "right":
-                eye_img = self.__get_eye_img(img, face_model_2d[2], face_model_2d[3])
-                eye_position = np.array([float(x) for x in annotation[38:41]])
-            case eye:
-                raise RuntimeError(f"Wrong eye: {eye}")
+        left_eye_img = self.__get_eye_img(img, face_model_2d[0], face_model_2d[1])
+        right_eye_img = self.__get_eye_img(img, face_model_2d[2], face_model_2d[3])
+        left_eye_position = np.array([float(x) for x in annotation[35:38]])
+        right_eye_position = np.array([float(x) for x in annotation[38:41]])
+        position = (left_eye_position + right_eye_position) / 2
 
         gaze_target = np.array([float(x) for x in annotation[26:29]])
-        gaze = eye_position - gaze_target
+        gaze = position - gaze_target
         gaze /= np.linalg.norm(gaze)
 
-        tensor_img = transforms.ToTensor()(eye_img)
-        tensor_head_rot_mat = FloatTensor(head_rot_mat.as_matrix().reshape(9))
+        tensor_left_img = transforms.ToTensor()(left_eye_img)
+        tensor_right_img = transforms.ToTensor()(right_eye_img)
+
+        tensor_head_rot_mat = FloatTensor(head_rot_mat.as_matrix())
         tensor_gaze = FloatTensor(gaze)
-        return tensor_head_rot_mat, tensor_img, tensor_gaze
+        return tensor_head_rot_mat, tensor_left_img, tensor_right_img, tensor_gaze
 
     def __get_eye_img(self, img, left, right):
         center = ((left + right) / 2.0).astype(int)

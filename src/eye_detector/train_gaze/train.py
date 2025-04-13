@@ -20,8 +20,8 @@ def angle_loss(output, target):
 def train(dataset_train, dataset_test, test, net, max_epoch=10):
     trainloader = DataLoader(dataset_train, batch_size=20, shuffle=True, num_workers=4)
     data_size = len(trainloader)
-    # criterion = MSELoss()
-    criterion = angle_loss
+    criterion = MSELoss()
+    # criterion = angle_loss
     optimizer = Adam(net.parameters(), lr=0.001)
 
     for epoch in range(max_epoch):  # loop over the dataset multiple times

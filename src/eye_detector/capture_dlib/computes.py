@@ -1,6 +1,8 @@
+from sys import stderr
 from typing import Optional
 
 import cv2
+from matplotlib.image import imsave
 import numpy as np
 from scipy.spatial.transform import Rotation
 from torch import FloatTensor, DoubleTensor
@@ -28,6 +30,36 @@ def compute_eye_3d(to_3d, face_normal, eye_coords: EyeCoordsPupil) -> Optional[E
     return Eye3D(pupil_xyz, direction)
 
 
+def compute_eye_3d_net2(model: NetModel, to_3d, rot_matrix: Rotation, left: EyeCoords, right: EyeCoords) -> Optional[Eye3D]:
+    if rot_matrix is None or left.centroid is None or right.centroid is None:
+        return None
+
+    left_xyz = to_3d(left.centroid)
+    if left_xyz is None:
+        return None
+
+    right_xyz = to_3d(right.centroid)
+    if right_xyz is None:
+        return None
+
+    xyz = (left_xyz + right_xyz) / 2
+    rot_matrix_flat = rot_matrix.as_matrix().reshape((1, 3, 3))
+
+    results = model.net((
+        FloatTensor(rot_matrix_flat),
+        FloatTensor(_get_eye(left, model)),
+        FloatTensor(_get_eye(right, model)),
+    ))
+    direction = results[0].detach().numpy()
+    direction = -to_unit_vector(direction)
+    return Eye3D(xyz, direction)
+
+
+def _get_eye(eye: EyeCoords, model: NetModel):
+    rgb_img = np.float32(eye.image)
+    return model.net_transform(rgb_img).reshape((1, 3, HEIGHT, WIDTH))
+
+
 def compute_eye_3d_net(model: NetModel, to_3d, rot_matrix: Rotation, eye_coords: EyeCoords) -> Optional[Eye3D]:
     if rot_matrix is None or eye_coords.centroid is None:
         return None
@@ -36,8 +68,8 @@ def compute_eye_3d_net(model: NetModel, to_3d, rot_matrix: Rotation, eye_coords:
     if eye_xyz is None:
         return None
 
-    rgb_img = cv2.cvtColor(np.float32(eye_coords.image), cv2.COLOR_BGR2RGB)
-    transformed_eye = model.net_transform(rgb_img).reshape((1, 3, WIDTH, HEIGHT))
+    rgb_img = np.float32(eye_coords.image)
+    transformed_eye = model.net_transform(rgb_img).reshape((1, 3, HEIGHT, WIDTH))
     rot_matrix_flat = rot_matrix.as_matrix().reshape((1, 9))
 
     results = model.net((

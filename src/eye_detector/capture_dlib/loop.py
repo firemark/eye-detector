@@ -16,6 +16,7 @@ from eye_detector.capture_dlib.draw import (
 
 def loop(model: EnrichedModel, cap):
     color_frame, depth_frame = cap.get_frames()
+    color_frame = cv2.cvtColor(color_frame, cv2.COLOR_BGR2RGB)
     color_frame = cv2.flip(color_frame, 1)
     depth_frame = cv2.flip(depth_frame, 1)
 

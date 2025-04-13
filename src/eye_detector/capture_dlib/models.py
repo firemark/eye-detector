@@ -46,7 +46,7 @@ class EyeCoords:
 
     @staticmethod
     def resize(eye):
-        return resize(eye, (WIDTH, HEIGHT))
+        return resize(eye, (HEIGHT, WIDTH))
 
 
 class EnrichedModel(Model):

@@ -54,7 +54,7 @@ def compute_eye_3d_net2(model: NetModel, to_3d, rot_matrix: Rotation, left: EyeC
 
 
 def _get_eye(eye: EyeCoords, model: NetModel):
-    rgb_img = np.float32(eye.image)
+    rgb_img = np.float32(eye.image.swapaxes(0, 1).swapaxes(0, 2))
     return model.net_transform(rgb_img).reshape((1, 3, HEIGHT, WIDTH))
 
 

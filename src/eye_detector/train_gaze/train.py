@@ -47,7 +47,7 @@ def train(dataset_train, dataset_test, test, net, max_epoch=10):
             epoch_running_loss += loss.item()
             total += len(gazes)
             if i != 0 and i % 200 == 0:
-                print(LOG_FORMAT % (epoch + 1, total, data_size, running_loss / 500, monotonic() - time))
+                print(LOG_FORMAT % (epoch + 1, total, data_size, running_loss / 200, monotonic() - time))
                 running_loss = 0.0
                 time = monotonic()
 

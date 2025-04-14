@@ -4,7 +4,8 @@
   <arg name="sim" default="false" />
   <arg name="model" default="default" />
 
-  <node pkg="realsense2_camera" exec="realsense2_camera_node" name="realsense" namespace="sensors" unless="$(var sim)">
+  <node pkg="realsense2_camera" exec="realsense2_camera_node" name="realsense" namespace="sensors"
+    unless="$(var sim)">
     <param name="color_qos" value="SENSOR_DATA" />
     <param name="depth_qos" value="SENSOR_DATA" />
     <param name="align_depth.enable" value="true" />
@@ -31,7 +32,7 @@
     <param name="use_sim_time" value="$(var sim)" />
   </node>
 
-  <node pkg="robot_state_publisher" exec="robot_state_publisher" name="robot_state_publisher" args="eye.urdf">
-    <param name="use_sim_time" value="$(var sim)" />
+  <node pkg="robot_state_publisher" exec="robot_state_publisher" name="robot_state_publisher"
+    args="eye.urdf">
   </node>
 </launch>

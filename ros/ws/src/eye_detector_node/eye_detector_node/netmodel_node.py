@@ -1,4 +1,7 @@
 from functools import partial
+from sys import stderr
+from eye_detector.scripts.train_net import create_dataset
+from eye_detector.train_gaze.dataset import MPIIIGazeDataset
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
@@ -30,7 +33,17 @@ class NetModelNode(Node):
         self.declare_parameter('model', 'default') 
         model = self.get_parameter('model').value.strip().lower()
 
-        self._calc_cb = self._calc_legacy if model == 'legacy' else self._calc
+        match model:
+            case 'legacy':
+                self._calc_cb = self._calc_legacy
+            case 'dataset':
+                self.d = MPIIIGazeDataset(root="indata/MPIIGaze", eye="left")
+                self.i = 0
+                self._calc_cb = self._calc_debug
+            case 'default':
+                self._calc_cb = self._calc
+            case model:
+                raise RuntimeError(f"unknown model {model}")
 
         self.color_sub = self.create_subscription(
             Image,
@@ -54,6 +67,21 @@ class NetModelNode(Node):
         self.pose_pub = self.create_publisher(
             PoseStamped,
             "~/pose",
+            qos_profile_sensor_data,
+        )
+        self.face_pub = self.create_publisher(
+            PoseStamped,
+            "~/face",
+            qos_profile_sensor_data,
+        )
+        self.left_eye_pub = self.create_publisher(
+            Image,
+            "~/eye/left",
+            qos_profile_sensor_data,
+        )
+        self.right_eye_pub = self.create_publisher(
+            Image,
+            "~/eye/right",
             qos_profile_sensor_data,
         )
 
@@ -84,9 +112,29 @@ class NetModelNode(Node):
         rot_matrix = compute_rotation_matrix1(landmarks, self.__to_3d)
         left = EyeCoords.create(*self.model.get_left_eye(self.color_frame, landmarks))
         right = EyeCoords.create(*self.model.get_right_eye(self.color_frame, landmarks))
+
+        if left:
+            self.left_eye_pub.publish(self.__to_img(left.image))
+
+        if right:
+            self.right_eye_pub.publish(self.__to_img(right.image))
+
         eye_3d = compute_eye_3d_net2(self.net_model, self.__to_3d, rot_matrix, left, right)
         if eye_3d:
-            self.pose_pub.publish(self.__to_pose(eye_3d))
+            self.face_pub.publish(self.__to_pose(eye_3d.eye_xyz, rot_matrix))
+            self.pose_pub.publish(self.__to_pose(eye_3d.eye_xyz, Rotation.from_rotvec(eye_3d.direction)))
+
+    def __to_img(self, image):
+        image = (image * 255).astype(np.uint8)
+        return self.bridge.cv2_to_imgmsg(image, "rgb8")
+
+    def _calc_debug(self):
+        xyz = (0.5, 0.0, 0.0)
+        (rot, left, right), gaze = self.d[self.i]
+        self.i += 1
+
+        self.face_pub.publish(self.__to_pose(xyz, Rotation.from_rotvec(rot)))
+        self.pose_pub.publish(self.__to_pose(xyz, Rotation.from_rotvec(gaze)))
 
     def _calc_legacy(self):
         if not self.__is_ready():
@@ -103,8 +151,9 @@ class NetModelNode(Node):
     def __find_and_pub_legacy(self, landmarks, face_normal, cb, pub):
         eye = cb(self.color_frame, self.model, landmarks)
         eye_3d = compute_eye_3d(self.__to_3d, face_normal, eye)
+
         if eye_3d:
-            pub.publish(self.__to_pose(eye_3d))
+            pub.publish(self.__to_pose(eye_3d.eye_xyz, Rotation.from_mrp(eye_3d.direction)))
 
     def __is_ready(self):
         return all(
@@ -122,16 +171,16 @@ class NetModelNode(Node):
         x, y = (p - self.intrinsics[0]) / self.intrinsics[1] * depth  # type: ignore
         return np.array([depth, -x, -y])
 
-    def __to_pose(self, eye3d: Eye3D) -> PoseStamped:
+    def __to_pose(self, pos, rot) -> PoseStamped:
         pose = PoseStamped()
         pose.header.frame_id = "camera_color_frame"
         pose.header.stamp = self.get_clock().now().to_msg()
 
-        pose.pose.position.x = eye3d.eye_xyz[0]
-        pose.pose.position.y = eye3d.eye_xyz[1]
-        pose.pose.position.z = eye3d.eye_xyz[2]
+        pose.pose.position.x = pos[0]
+        pose.pose.position.y = pos[1]
+        pose.pose.position.z = pos[2]
 
-        quaternion = Rotation.from_rotvec(eye3d.direction).as_quat()
+        quaternion = rot.as_quat()
         pose.pose.orientation.x = quaternion[1]
         pose.pose.orientation.y = quaternion[2]
         pose.pose.orientation.z = quaternion[3]

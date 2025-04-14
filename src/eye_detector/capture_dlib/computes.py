@@ -43,16 +43,14 @@ def compute_eye_3d_net2(model: NetModel, to_3d, rot_matrix: Rotation, left: EyeC
         return None
 
     xyz = (left_xyz + right_xyz) / 2
-    rot_matrix_flat = rot_matrix.as_matrix().reshape((1, 3, 3))
+    rot_matrix_flat = rot_matrix.as_rotvec().reshape((1, 3))
 
     results = model.net((
         FloatTensor(rot_matrix_flat),
         FloatTensor(_get_eye(left, model)),
         FloatTensor(_get_eye(right, model)),
     ))
-    direction = results[0].detach().numpy()
-    direction = -to_unit_vector(direction)
-    return Eye3D(xyz, direction)
+    return Eye3D(xyz, results[0].detach().numpy())
 
 
 def _get_eye(eye: EyeCoords, model: NetModel):
@@ -70,7 +68,7 @@ def compute_eye_3d_net(model: NetModel, to_3d, rot_matrix: Rotation, eye_coords:
 
     rgb_img = np.float32(eye_coords.image)
     transformed_eye = model.net_transform(rgb_img).reshape((1, 3, HEIGHT, WIDTH))
-    rot_matrix_flat = rot_matrix.as_matrix().reshape((1, 9))
+    rot_matrix_flat = rot_matrix.as_mrp().reshape((1, 3))
 
     results = model.net((
         FloatTensor(rot_matrix_flat),
@@ -126,9 +124,9 @@ def compute_rotation_matrix1(landmarks, to_3d) -> Rotation:
     face_height = np.sqrt(sides_len ** 2 - eye_len_half ** 2)
 
     points_to_rotate = np.array([
-        [0, face_height, 0],  # chin
-        [+eye_len_half, 0, 0],  # Right eye corner
-        [-eye_len_half, 0, 0],  # Left eye corner
+        [0, 0, -face_height],  # chin
+        [0, -eye_len_half, 0],  # Right eye corner
+        [0, +eye_len_half, 0],  # Left eye corner
     ], dtype=float)
 
     points = np.array(points)

@@ -1,6 +1,7 @@
 from glob import glob
 from pickle import load as pickle_load
 from typing import List, Literal
+from uuid import uuid4
 
 from PIL import Image
 from scipy.io import loadmat
@@ -71,7 +72,7 @@ class MPIIIGazeDataset(Dataset):
     def __init__(self, root: str, eye: Literal["left", "right"]):
         annotation_paths = glob(f"{root}/Data/Original/p*/day*")
         self.face_model = loadmat(f"{root}/6 points-based face model.mat")['model'].transpose()
-        self.paths = list(x for i, x in enumerate(self.get_paths(annotation_paths)) if i % 10 == 0)
+        self.paths = list(self.get_paths(annotation_paths))
         self.camera_cache = {}
         self.cache = {}
         self.eye = eye
@@ -115,8 +116,8 @@ class MPIIIGazeDataset(Dataset):
             img = Image.open(file).convert('RGB')
 
         camera = self.load_camera(dirpath)
-        head_rot_vec = [float(x) for x in annotation[29:32]]
-        head_tra_vec = [float(x) for x in annotation[32:35]]
+        head_rot_vec = np.array([float(x) for x in annotation[29:32]])
+        head_tra_vec = np.array([float(x) for x in annotation[32:35]])
         head_rot_mat = Rotation.from_rotvec(head_rot_vec)
         face_model_2d = head_rot_mat.apply(self.face_model) + head_tra_vec
         face_model_2d[:, 0] = face_model_2d[:, 0] * (camera[0, 0] / face_model_2d[:, 2]) + camera[0, 2]
@@ -135,7 +136,8 @@ class MPIIIGazeDataset(Dataset):
         tensor_left_img = transforms.ToTensor()(left_eye_img)
         tensor_right_img = transforms.ToTensor()(right_eye_img)
 
-        tensor_head_rot_mat = FloatTensor(head_rot_mat.as_matrix())
+        nx, ny, nz = head_rot_mat.as_rotvec()
+        tensor_head_rot_mat = FloatTensor([nz, nx, ny])
         tensor_gaze = FloatTensor(gaze)
         return tensor_head_rot_mat, tensor_left_img, tensor_right_img, tensor_gaze
 

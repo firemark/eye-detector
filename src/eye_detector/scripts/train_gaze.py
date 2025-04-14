@@ -20,7 +20,7 @@ def main(args):
 
     print("JITing neural network…")
     net = Net()
-    example_input = [(torch.rand(1, 9), torch.rand(1, 3, WIDTH, HEIGHT), torch.rand(1, 3, WIDTH, HEIGHT))]
+    example_input = [(torch.rand(1, 3), torch.rand(1, 3, WIDTH, HEIGHT), torch.rand(1, 3, WIDTH, HEIGHT))]
     net = torch.jit.trace(net, example_input)
 
     print("Training…")

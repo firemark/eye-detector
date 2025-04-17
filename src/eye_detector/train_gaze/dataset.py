@@ -1,5 +1,6 @@
 from glob import glob
 from pickle import load as pickle_load
+from random import shuffle
 from typing import List, Literal
 from uuid import uuid4
 
@@ -22,7 +23,7 @@ KEY_IMG = 1
 
 def get_transform_components() -> List[Module]:
     return [
-        transforms.Normalize([0.5], [0.5]),
+        #transforms.Normalize([0.5], [0.5]),
     ]
 
 
@@ -32,23 +33,23 @@ def get_transform():
 
 class SynthGazeDataset(Dataset):
 
-    def __init__(self, root: str):
-        paths = glob(f"{root}/**/*.png", recursive=True)
-        self.cache = [
-            self.load_image(filepath)
-            for filepath in paths
-        ]
+    def __init__(self, root: str, size_ratio=1.0):
+        self.paths = glob(f"{root}/**/*.png", recursive=True)
+        shuffle(self.paths)
+        if size_ratio < 1.0:
+            self.paths = self.paths[:int(len(self.paths) * size_ratio)]
         trans = [
             # transforms.RandomCrop(size=0.95),
             transforms.ColorJitter(hue=0.02, saturation=0.02, contrast=0.02),
             transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 0.5)),
-            transforms.Resize((WIDTH, HEIGHT)),
+            transforms.Resize((HEIGHT, WIDTH)),
         ] + get_transform_components()
         self.transform = torch.jit.script(Sequential(*trans))
 
     def __getitem__(self, index):
-        rot_matrix, img, gaze = self.cache[index]
-        return (rot_matrix, self.transform(img)), gaze
+        path = self.paths[index]
+        rot_matrix, left, right, gaze = self.load_image(path)
+        return (rot_matrix, self.transform(left), self.transform(right)), gaze
 
     def load_image(self, image_filepath):
         metadata_filepath = image_filepath.rpartition('.')[0] + '.pkl'
@@ -59,38 +60,37 @@ class SynthGazeDataset(Dataset):
         with open(image_filepath, 'rb') as file:
             img = transforms.ToTensor()(Image.open(file).convert('RGB'))
 
-        gaze = FloatTensor(metadata['look_vec'])
-        rot_matrix = FloatTensor(metadata['head_pose'])
-        return rot_matrix, img, gaze
+        x, y, z = metadata['look_vec']
+        gaze = FloatTensor([-z, x, y])
+        rot_vec = FloatTensor(metadata['head_pose']).reshape(9)
+        return rot_vec, img, img, gaze
 
     def __len__(self) -> int:
-        return len(self.cache)
+        return len(self.paths)
 
 
 class MPIIIGazeDataset(Dataset):
 
-    def __init__(self, root: str, eye: Literal["left", "right"]):
+    def __init__(self, root: str, size_ratio: float = 1.0):
         annotation_paths = glob(f"{root}/Data/Original/p*/day*")
         self.face_model = loadmat(f"{root}/6 points-based face model.mat")['model'].transpose()
         self.paths = list(self.get_paths(annotation_paths))
+        shuffle(self.paths)
+        if size_ratio < 1.0:
+            self.paths = self.paths[:int(len(self.paths) * size_ratio)]
         self.camera_cache = {}
         self.cache = {}
-        self.eye = eye
         trans = [
             # transforms.RandomCrop(size=0.95),
             transforms.ColorJitter(hue=0.02, saturation=0.02, contrast=0.02),
             transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 0.5)),
-            transforms.Resize((WIDTH, HEIGHT)),
+            transforms.Resize((HEIGHT, WIDTH)),
         ] + get_transform_components()
         self.transform = torch.jit.script(Sequential(*trans))
 
     def __getitem__(self, index):
-        obj = self.cache.get(index)
-        if obj is None:
-            dirpath, annotation, img_path = self.paths[index]
-            obj = self.load_image(dirpath, annotation, img_path)
-            self.cache[index] = obj
-
+        dirpath, annotation, img_path = self.paths[index]
+        obj = self.load_image(dirpath, annotation, img_path)
         rot_matrix, left_img, right_img, gaze = obj
         return (rot_matrix, self.transform(left_img), self.transform(right_img)), gaze
 
@@ -136,9 +136,11 @@ class MPIIIGazeDataset(Dataset):
         tensor_left_img = transforms.ToTensor()(left_eye_img)
         tensor_right_img = transforms.ToTensor()(right_eye_img)
 
-        nx, ny, nz = head_rot_mat.as_rotvec()
-        tensor_head_rot_mat = FloatTensor([nz, nx, ny])
-        tensor_gaze = FloatTensor(gaze)
+        nx, ny, nz = head_rot_vec
+        x, y, z = gaze
+        rot_matrix = Rotation.from_rotvec([nz, nx, -ny]).as_matrix()
+        tensor_head_rot_mat = FloatTensor(rot_matrix.reshape(9))
+        tensor_gaze = FloatTensor([z, x, -y])
         return tensor_head_rot_mat, tensor_left_img, tensor_right_img, tensor_gaze
 
     def __get_eye_img(self, img, left, right):
@@ -154,10 +156,8 @@ class MPIIIGazeDataset(Dataset):
         ))
 
 
-def create_dataset(eye):
+def create_dataset(size_ratio=1.0):
     # dataset = SynthGazeDataset(root="indata/SynthEyes_data")
-    dataset = MPIIIGazeDataset(root="indata/MPIIGaze", eye=eye)
-    size = len(dataset)
-    train_size = int(size * 0.8)
-    test_size = size - train_size
-    return random_split(dataset, [train_size, test_size])
+    train_dataset = MPIIIGazeDataset(root="indata/MPIIGaze", size_ratio=size_ratio)
+    test_dataset = SynthGazeDataset(root="indata/SynthEyes_data", size_ratio=0.5)
+    return train_dataset, test_dataset

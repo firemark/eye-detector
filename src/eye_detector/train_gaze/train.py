@@ -17,15 +17,14 @@ def angle_loss(output, target):
     return (dot / (output_norm * target_norm)).clamp(-1+EPS, +1-EPS).acos().sum()
 
 
-def train(dataset_train, dataset_test, test, net, max_epoch=10):
+def train(dataset_train, dataset_test, test, net, max_epoch: int, save_cb):
     trainloader = DataLoader(dataset_train, batch_size=20, shuffle=True, num_workers=4)
-    data_size = len(trainloader)
+    data_size = len(dataset_train)
     criterion = MSELoss()
     # criterion = angle_loss
     optimizer = Adam(net.parameters(), lr=0.001)
 
-    for epoch in range(max_epoch):  # loop over the dataset multiple times
-        epoch_time = monotonic()
+    def train_epoch(epoch):
         time = monotonic()
         epoch_running_loss = 0.0
         running_loss = 0.0
@@ -50,10 +49,24 @@ def train(dataset_train, dataset_test, test, net, max_epoch=10):
                 print(LOG_FORMAT % (epoch + 1, total, data_size, running_loss / 200, monotonic() - time))
                 running_loss = 0.0
                 time = monotonic()
+        return running_loss, total
 
-        print('Epoch:', LOG_FORMAT % (epoch + 1, total, data_size, epoch_running_loss / total, monotonic() - epoch_time))
-        if (epoch < max_epoch - 5 and epoch % 5 == 4) or epoch == max_epoch - 1:
-            print('---')
-            print('test result:')
-            test(dataset_test, net)
-            print('---')
+
+    def log_epoch(running_loss, total):
+        print('Epoch:', LOG_FORMAT % (epoch + 1, total, data_size, running_loss / data_size, monotonic() - epoch_time))
+        print('---')
+        print('test result:')
+        test(dataset_test, net)
+        print('---')
+
+    try:
+        for epoch in range(max_epoch):  # loop over the dataset multiple times
+            epoch_time = monotonic()
+            running_loss, total = train_epoch(epoch)
+            # if (epoch < max_epoch - 5 and epoch % 5 == 4) or epoch == max_epoch - 1:
+            log_epoch(running_loss, total)
+            save_cb(net)
+    except KeyboardInterrupt:
+        save_cb(net)
+
+

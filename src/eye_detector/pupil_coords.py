@@ -12,10 +12,11 @@ from skimage.morphology import opening, disk
 class EyeCoords:
     x: slice
     y: slice
-    eye_centroid: Optional[np.array]
-    pupil_centroid: Optional[np.array]
-    eye_corner_point: Optional[np.array]
-    pupil_mask: np.array
+    eye_centroid: Optional[np.ndarray]
+    pupil_centroid: Optional[np.ndarray]
+    eye_corner_point: Optional[np.ndarray]
+    eye_mask: np.ndarray
+    pupil_mask: np.ndarray
 
 
 def to_mask(img, model, landmarks):
@@ -87,6 +88,7 @@ def _get_coords(eye, x, y, points, eye_corner_point, debug=False) -> EyeCoords:
         eye_centroid=eye_centroid,
         pupil_centroid=pupil_centroid,
         eye_corner_point=eye_corner_point,
+        eye_mask=eye_mask, 
         pupil_mask=pupil_mask,
     )
 

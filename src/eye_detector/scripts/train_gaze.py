@@ -11,22 +11,26 @@ from eye_detector.train_gaze.test import test_data
 
 parser = ArgumentParser(description="Train gaze")
 parser.add_argument("--epoch", default=10, type=int)
-parser.add_argument("--eye", default="left")
+parser.add_argument("--size-ratio", default=1.0, type=float)
+parser.add_argument("--output", default="outdata/net.pth")
+
+
+def __save(net, output: str):
+    print("Saving to", output, "…")
+    torch.save(net.state_dict(), output)
 
 
 def main(args):
     print("Preparing dataset…")
-    trainset, testset = create_dataset(args.eye)
+    trainset, testset = create_dataset(args.size_ratio)
 
     print("JITing neural network…")
     net = Net()
-    example_input = [(torch.rand(1, 3), torch.rand(1, 3, WIDTH, HEIGHT), torch.rand(1, 3, WIDTH, HEIGHT))]
+    example_input = [(torch.rand(1, 9), torch.rand(1, 3, WIDTH, HEIGHT), torch.rand(1, 3, WIDTH, HEIGHT))]
     net = torch.jit.trace(net, example_input)
 
     print("Training…")
-    train(trainset, testset, test_data, net, max_epoch=args.epoch)
-    print("Saving…")
-    torch.save(net.state_dict(), f"outdata/net.pth")
+    train(trainset, testset, test_data, net, max_epoch=args.epoch, save_cb=lambda net: __save(net, args.output))
     print('Finished Training')
 
 

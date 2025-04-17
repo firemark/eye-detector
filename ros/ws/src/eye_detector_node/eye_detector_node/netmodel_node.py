@@ -1,13 +1,13 @@
 from functools import partial
 from sys import stderr
 from eye_detector.scripts.train_net import create_dataset
-from eye_detector.train_gaze.dataset import MPIIIGazeDataset
+from eye_detector.train_gaze.dataset import MPIIIGazeDataset, SynthGazeDataset
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 
 from sensor_msgs.msg import Image, CameraInfo
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, PointStamped
 
 from cv_bridge import CvBridge
 from scipy.spatial.transform import Rotation
@@ -25,7 +25,6 @@ class NetModelNode(Node):
         super().__init__("netmodel")
         self.bridge = CvBridge()
         self.model = EnrichedModel()
-        self.net_model = NetModel("outdata/net.pth")
         self.color_frame = None
         self.depth_frame = None
         self.intrinsics = None
@@ -36,11 +35,16 @@ class NetModelNode(Node):
         match model:
             case 'legacy':
                 self._calc_cb = self._calc_legacy
-            case 'dataset':
-                self.d = MPIIIGazeDataset(root="indata/MPIIGaze", eye="left")
+            case 'dataset_mpii':
+                self.d = MPIIIGazeDataset(root="indata/MPIIGaze")
+                self.i = 0
+                self._calc_cb = self._calc_debug
+            case 'dataset_synth':
+                self.d = SynthGazeDataset(root="indata/SynthEyes_data")
                 self.i = 0
                 self._calc_cb = self._calc_debug
             case 'default':
+                self.net_model = NetModel("outdata/net.pth")
                 self._calc_cb = self._calc
             case model:
                 raise RuntimeError(f"unknown model {model}")
@@ -73,6 +77,11 @@ class NetModelNode(Node):
             PoseStamped,
             "~/face",
             qos_profile_sensor_data,
+        )
+        self.point_pub = self.create_publisher(
+            PointStamped,
+            "~/point",
+            1
         )
         self.left_eye_pub = self.create_publisher(
             Image,
@@ -121,20 +130,48 @@ class NetModelNode(Node):
 
         eye_3d = compute_eye_3d_net2(self.net_model, self.__to_3d, rot_matrix, left, right)
         if eye_3d:
+            q = self.__heading_to_rotation(eye_3d.direction)
             self.face_pub.publish(self.__to_pose(eye_3d.eye_xyz, rot_matrix))
-            self.pose_pub.publish(self.__to_pose(eye_3d.eye_xyz, Rotation.from_rotvec(eye_3d.direction)))
+            self.pose_pub.publish(self.__to_pose(eye_3d.eye_xyz, q))
+            self.point_pub.publish(self.__to_point(eye_3d.eye_xyz - eye_3d.direction))
 
     def __to_img(self, image):
         image = (image * 255).astype(np.uint8)
         return self.bridge.cv2_to_imgmsg(image, "rgb8")
 
+    def __to_img_legacy(self, image):
+        return self.bridge.cv2_to_imgmsg(image, "rgb8")
+
+    def __to_img_debug(self, image):
+        image = (image * 255).astype(np.uint8).swapaxes(0, 2).swapaxes(0, 1)
+        return self.bridge.cv2_to_imgmsg(image, "rgb8")
+
     def _calc_debug(self):
-        xyz = (0.5, 0.0, 0.0)
+        xyz = (0.5, 0.0, 0.25)
         (rot, left, right), gaze = self.d[self.i]
         self.i += 1
 
-        self.face_pub.publish(self.__to_pose(xyz, Rotation.from_rotvec(rot)))
-        self.pose_pub.publish(self.__to_pose(xyz, Rotation.from_rotvec(gaze)))
+        q = self.__heading_to_rotation(gaze.numpy())
+        rot = Rotation.from_matrix(rot.reshape(3, 3)) * Rotation.from_quat([0, 0, 1, 0])
+
+        self.face_pub.publish(self.__to_pose(xyz, rot))
+        self.pose_pub.publish(self.__to_pose(xyz, q))
+        self.point_pub.publish(self.__to_point(xyz - gaze.numpy()))
+        self.left_eye_pub.publish(self.__to_img_debug(left.numpy()))
+        self.right_eye_pub.publish(self.__to_img_debug(right.numpy()))
+
+    def __heading_to_rotation(self, b):
+        # Todo - optimize this
+        a = np.array([1.0, 0.0, 0.0])
+        b = b / np.linalg.norm(b)
+        n = np.cross(a, b)
+        c = np.dot(a, b)
+        cos = np.sqrt(1 + c / 2)
+        sin = np.sqrt(1 - c / 2)
+        nn = n * sin
+        q = Rotation.from_quat([*nn, cos])
+        q *= Rotation.from_quat([0, 0, 1, 0])
+        return q
 
     def _calc_legacy(self):
         if not self.__is_ready():
@@ -144,16 +181,40 @@ class NetModelNode(Node):
         if landmarks is None:
             return
 
+        color = self.color_frame.copy().astype(np.float32) / 255.0
         normal = compute_face_normal(landmarks, self.__to_3d)
-        find_and_pub = partial(self.__find_and_pub_legacy, landmarks, normal)
-        find_and_pub(pupil_coords.get_left_coords, self.pose_pub)
 
-    def __find_and_pub_legacy(self, landmarks, face_normal, cb, pub):
-        eye = cb(self.color_frame, self.model, landmarks)
-        eye_3d = compute_eye_3d(self.__to_3d, face_normal, eye)
+        left_eye = pupil_coords.get_left_coords(color, self.model, landmarks)
+        left_eye_3d = compute_eye_3d(self.__to_3d, normal, left_eye)
 
-        if eye_3d:
-            pub.publish(self.__to_pose(eye_3d.eye_xyz, Rotation.from_mrp(eye_3d.direction)))
+        right_eye = pupil_coords.get_left_coords(color, self.model, landmarks)
+        right_eye_3d = compute_eye_3d(self.__to_3d, normal, right_eye)
+
+        def crop_eye(eye):
+            image = color[eye.y, eye.x]
+            m = eye.eye_mask & ~eye.pupil_mask
+            image[m] = image[m] * 0.5 + [0.0, 0.25, 0.0]
+            m = eye.pupil_mask
+            image[m] = image[m] * 0.5 + [0.25, 0.0, 0.0]
+            color[eye.eye_centroid[1], eye.eye_centroid[0]] = [0, 1, 0]
+            color[eye.pupil_centroid[1], eye.pupil_centroid[0]] = [0, 0, 1]
+            return image
+
+        if left_eye_3d:
+            image = crop_eye(left_eye)
+            self.left_eye_pub.publish(self.__to_img(image))
+
+        if right_eye_3d:
+            image = crop_eye(right_eye)
+            self.right_eye_pub.publish(self.__to_img(image))
+
+        if left_eye_3d:
+            face = self.__heading_to_rotation(normal)
+            q = self.__heading_to_rotation(left_eye_3d.direction)
+
+            self.face_pub.publish(self.__to_pose(left_eye_3d.eye_xyz, face))
+            self.pose_pub.publish(self.__to_pose(left_eye_3d.eye_xyz, q))
+            self.point_pub.publish(self.__to_point(left_eye_3d.eye_xyz - left_eye_3d.direction))
 
     def __is_ready(self):
         return all(
@@ -171,6 +232,16 @@ class NetModelNode(Node):
         x, y = (p - self.intrinsics[0]) / self.intrinsics[1] * depth  # type: ignore
         return np.array([depth, -x, -y])
 
+    def __to_point(self, pos) -> PointStamped:
+        point = PointStamped()
+        point.header.frame_id = "camera_color_frame"
+        point.header.stamp = self.get_clock().now().to_msg()
+
+        point.point.x = pos[0]
+        point.point.y = pos[1]
+        point.point.z = pos[2]
+        return point
+
     def __to_pose(self, pos, rot) -> PoseStamped:
         pose = PoseStamped()
         pose.header.frame_id = "camera_color_frame"
@@ -181,10 +252,10 @@ class NetModelNode(Node):
         pose.pose.position.z = pos[2]
 
         quaternion = rot.as_quat()
-        pose.pose.orientation.x = quaternion[1]
-        pose.pose.orientation.y = quaternion[2]
-        pose.pose.orientation.z = quaternion[3]
-        pose.pose.orientation.w = quaternion[0]
+        pose.pose.orientation.x = quaternion[0]
+        pose.pose.orientation.y = quaternion[1]
+        pose.pose.orientation.z = quaternion[2]
+        pose.pose.orientation.w = quaternion[3]
 
         return pose
 

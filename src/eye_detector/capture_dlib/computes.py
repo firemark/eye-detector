@@ -1,13 +1,10 @@
-from sys import stderr
 from typing import Optional
 
-import cv2
 from matplotlib.image import imsave
 import numpy as np
 from scipy.spatial.transform import Rotation
-from torch import FloatTensor, DoubleTensor
+from torch import FloatTensor
 
-from eye_detector.cam_func import Cam
 from eye_detector.pupil_coords import EyeCoords as EyeCoordsPupil
 from eye_detector.capture_dlib.utils import to_unit_vector
 from eye_detector.capture_dlib.models import EyeCache, Eye3D, NetModel, ScreenBox, EyeCoords, EnrichedModel
@@ -28,7 +25,6 @@ def compute_eye_3d(to_3d, face_normal, eye_coords: EyeCoordsPupil) -> Optional[E
     diameter = 0.025
     center_of_eye = eye_xyz + face_normal * diameter / 2
     direction = to_unit_vector(pupil_xyz - center_of_eye)
-    print(direction, file=stderr)
     nx, ny, nz = direction
     return Eye3D(pupil_xyz, [ny, nx, nz])
 

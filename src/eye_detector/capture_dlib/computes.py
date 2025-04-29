@@ -23,10 +23,9 @@ def compute_eye_3d(to_3d, face_normal, eye_coords: EyeCoordsPupil) -> Optional[E
 
 
     diameter = 0.025
-    center_of_eye = eye_xyz + face_normal * diameter / 2
+    center_of_eye = eye_xyz - face_normal * diameter / 2
     direction = to_unit_vector(pupil_xyz - center_of_eye)
-    nx, ny, nz = direction
-    return Eye3D(pupil_xyz, [ny, nx, nz])
+    return Eye3D(pupil_xyz, direction)
 
 
 def compute_eye_3d_net2(model: NetModel, to_3d, rot_matrix: Rotation, left: EyeCoords, right: EyeCoords) -> Optional[Eye3D]:
@@ -101,7 +100,8 @@ def compute_face_normal(landmarks, to_3d):
     if any(p is None for p in points):
         return None
 
-    return np.cross(points[1] - points[0], points[2] - points[1])
+    vec = np.cross(points[0] - points[1], points[2] - points[1])
+    return to_unit_vector(vec)
 
 
 def compute_rotation_matrix1(landmarks, to_3d) -> Rotation:

@@ -21,12 +21,15 @@ def __save(net, output: str):
 
 
 def main(args):
+    torch.multiprocessing.set_start_method('spawn')
+    device = torch.device("cuda")
     print("Preparing dataset…")
-    trainset, testset = create_dataset(args.size_ratio)
+    trainset, testset = create_dataset(device, args.size_ratio)
 
     print("JITing neural network…")
-    net = Net()
+    net = Net().to(device).eval()
     example_input = [(torch.rand(1, 9), torch.rand(1, 3, WIDTH, HEIGHT), torch.rand(1, 3, WIDTH, HEIGHT))]
+    example_input = [tuple(i.to(device) for i in example_input[0])]
     net = torch.jit.trace(net, example_input)
 
     print("Training…")

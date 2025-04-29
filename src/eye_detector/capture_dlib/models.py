@@ -21,6 +21,7 @@ class Eye3D:
     eye_xyz: np.ndarray
     direction: np.ndarray
 
+
 @dataclass
 class EyeCoords:
     image: np.ndarray
@@ -54,7 +55,7 @@ class EnrichedModel(Model):
 
     def __init__(self):
         super().__init__()
-        #self.pupil_coords_model = load_model("eye-pupil")
+        # self.pupil_coords_model = load_model("eye-pupil")
         self.eyecache_left = EyeCache()
         self.eyecache_right = EyeCache()
         self.screen_box = ScreenBox(
@@ -73,7 +74,12 @@ class NetModel:
 
     def load_net(self, net_path: str) -> Net:
         net = Net()
-        net.load_state_dict(torch.load(net_path))
+        state = torch.load(
+            net_path,
+            map_location=torch.device("cpu"),
+            weights_only=True,
+        )
+        net.load_state_dict(state)
         net.eval()
         return net
 
@@ -103,13 +109,20 @@ class ScreenBox:
 
     def __init__(self, leftdown_position, width, height, roll=0.0, pitch=0.0, yaw=0.0):
         euler_angles = np.array([yaw, pitch, roll])
-        rotation = Rotation.from_euler('xyz', euler_angles, degrees=True)
+        rotation = Rotation.from_euler("xyz", euler_angles, degrees=True)
         center_position = leftdown_position + [width / 2, height / 2, 0]
-        points = rotation.apply(np.array([
-            [0.0, 0.0, 0.0],
-            [width, 0.0, 0.0],
-            [0.0, height, 0.0],
-        ])) + center_position
+        points = (
+            rotation.apply(
+                np.array(
+                    [
+                        [0.0, 0.0, 0.0],
+                        [width, 0.0, 0.0],
+                        [0.0, height, 0.0],
+                    ]
+                )
+            )
+            + center_position
+        )
 
         self.center_position = center_position
         self.leftdown_position = leftdown_position

@@ -33,7 +33,7 @@ def get_transform():
 
 class SynthGazeDataset(Dataset):
 
-    def __init__(self, root: str, size_ratio=1.0):
+    def __init__(self, device, root: str, size_ratio=1.0):
         self.paths = glob(f"{root}/**/*.png", recursive=True)
         shuffle(self.paths)
         if size_ratio < 1.0:
@@ -44,7 +44,9 @@ class SynthGazeDataset(Dataset):
             transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 0.5)),
             transforms.Resize((HEIGHT, WIDTH)),
         ] + get_transform_components()
-        self.transform = torch.jit.script(Sequential(*trans))
+        # selfransform = torch.jit.script(Sequential(*trans)).to(device)
+        self.transform = Sequential(*trans).to(device)
+        self.device = device
 
     def __getitem__(self, index):
         path = self.paths[index]
@@ -58,11 +60,11 @@ class SynthGazeDataset(Dataset):
             metadata = pickle_load(file)
 
         with open(image_filepath, 'rb') as file:
-            img = transforms.ToTensor()(Image.open(file).convert('RGB'))
+            img = transforms.ToTensor()(Image.open(file).convert('RGB')).to(self.device)
 
         x, y, z = metadata['look_vec']
-        gaze = FloatTensor([-z, x, y])
-        rot_vec = FloatTensor(metadata['head_pose']).reshape(9)
+        gaze = FloatTensor([-z, x, y]).to(self.device)
+        rot_vec = FloatTensor(metadata['head_pose']).reshape(9).to(self.device)
         return rot_vec, img, img, gaze
 
     def __len__(self) -> int:
@@ -71,7 +73,7 @@ class SynthGazeDataset(Dataset):
 
 class MPIIIGazeDataset(Dataset):
 
-    def __init__(self, root: str, size_ratio: float = 1.0):
+    def __init__(self, device, root: str, size_ratio: float = 1.0):
         annotation_paths = glob(f"{root}/Data/Original/p*/day*")
         self.face_model = loadmat(f"{root}/6 points-based face model.mat")['model'].transpose()
         self.paths = list(self.get_paths(annotation_paths))
@@ -86,7 +88,9 @@ class MPIIIGazeDataset(Dataset):
             transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 0.5)),
             transforms.Resize((HEIGHT, WIDTH)),
         ] + get_transform_components()
-        self.transform = torch.jit.script(Sequential(*trans))
+        # self.transform = torch.jit.script(Sequential(*trans)).to(device)
+        self.transform = Sequential(*trans).to(device)
+        self.device = device
 
     def __getitem__(self, index):
         dirpath, annotation, img_path = self.paths[index]
@@ -133,14 +137,14 @@ class MPIIIGazeDataset(Dataset):
         gaze = position - gaze_target
         gaze /= np.linalg.norm(gaze)
 
-        tensor_left_img = transforms.ToTensor()(left_eye_img)
-        tensor_right_img = transforms.ToTensor()(right_eye_img)
+        tensor_left_img = transforms.ToTensor()(left_eye_img).to(self.device)
+        tensor_right_img = transforms.ToTensor()(right_eye_img).to(self.device)
 
         nx, ny, nz = head_rot_vec
         x, y, z = gaze
         rot_matrix = Rotation.from_rotvec([nz, nx, -ny]).as_matrix()
-        tensor_head_rot_mat = FloatTensor(rot_matrix.reshape(9))
-        tensor_gaze = FloatTensor([z, x, -y])
+        tensor_head_rot_mat = FloatTensor(rot_matrix.reshape(9)).to(self.device)
+        tensor_gaze = FloatTensor([z, x, -y]).to(self.device)
         return tensor_head_rot_mat, tensor_left_img, tensor_right_img, tensor_gaze
 
     def __get_eye_img(self, img, left, right):
@@ -156,8 +160,13 @@ class MPIIIGazeDataset(Dataset):
         ))
 
 
-def create_dataset(size_ratio=1.0):
+def create_dataset(device, size_ratio=1.0):
     # dataset = SynthGazeDataset(root="indata/SynthEyes_data")
-    train_dataset = MPIIIGazeDataset(root="indata/MPIIGaze", size_ratio=size_ratio)
-    test_dataset = SynthGazeDataset(root="indata/SynthEyes_data", size_ratio=0.5)
+    train_dataset = MPIIIGazeDataset(device, root="indata/MPIIGaze", size_ratio=size_ratio)
+    # test_dataset = SynthGazeDataset(device, root="indata/SynthEyes_data", size_ratio=0.5)
+
+    train_size = int(len(train_dataset) * 0.8)
+    test_size = len(train_dataset) - train_size
+
+    train_dataset, test_dataset = torch.utils.data.random_split(train_dataset, [train_size, test_size])
     return train_dataset, test_dataset

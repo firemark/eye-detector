@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 
 
 LOG_FORMAT = '[%2d, %7d / %7d] loss: %.5f; time: %.3f'
+PRINT_STEP = 20
 EPS = 1e-3
 
 
@@ -18,7 +19,7 @@ def angle_loss(output, target):
 
 
 def train(dataset_train, dataset_test, test, net, max_epoch: int, save_cb):
-    trainloader = DataLoader(dataset_train, batch_size=20, shuffle=True, num_workers=4)
+    trainloader = DataLoader(dataset_train, batch_size=500, shuffle=True, num_workers=20)
     data_size = len(dataset_train)
     criterion = MSELoss()
     # criterion = angle_loss
@@ -45,8 +46,8 @@ def train(dataset_train, dataset_test, test, net, max_epoch: int, save_cb):
             running_loss += loss.item()
             epoch_running_loss += loss.item()
             total += len(gazes)
-            if i != 0 and i % 200 == 0:
-                print(LOG_FORMAT % (epoch + 1, total, data_size, running_loss / 200, monotonic() - time))
+            if i != 0 and i % PRINT_STEP == 0:
+                print(LOG_FORMAT % (epoch + 1, total, data_size, running_loss / PRINT_STEP, monotonic() - time))
                 running_loss = 0.0
                 time = monotonic()
         return running_loss, total

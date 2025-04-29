@@ -1,6 +1,6 @@
 import torch.nn as nn
 from torch import Tensor, cat
-from torchvision.models import vgg16
+from torchvision.models import vgg16, VGG16_Weights
 
 from .dataset import WIDTH, HEIGHT
 
@@ -21,11 +21,11 @@ class Net(nn.Module):
         #     nn.ReLU(),
         # )
         self.final_stack = nn.Sequential(
-            nn.Linear(9 + left_in_features + right_in_features, 256),
+            nn.Linear(9 + left_in_features + right_in_features, 512),
             nn.ReLU(inplace=True),
-            nn.Linear(256, 32),
+            nn.Linear(512, 256),
             nn.ReLU(inplace=True),
-            nn.Linear(32, 3),
+            nn.Linear(256, 3),
         )
 
     def forward(self, x: tuple[Tensor, Tensor, Tensor]):
@@ -36,24 +36,24 @@ class Net(nn.Module):
         return self.final_stack(x_final)
 
     def _create_img_stack(self):
-        fc1_w = ((WIDTH - FIRST_KERNEL_SIZE + 1) // 2 - SECOND_KERNEL_SIZE + 1) // 2
-        fc1_h = ((HEIGHT - FIRST_KERNEL_SIZE + 1) // 2 - SECOND_KERNEL_SIZE + 1) // 2
-        features = nn.Sequential(
-            nn.Conv2d(3, 6, FIRST_KERNEL_SIZE),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2),
-            nn.Conv2d(6, 16, SECOND_KERNEL_SIZE),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2),
-            nn.Flatten(),
-            nn.Linear(16 * fc1_w * fc1_h, 256),
-            nn.ReLU(),
-            # nn.Linear(1024, 256),
-            # nn.ReLU(),
-        )
-        return features, 256
+        # fc1_w = ((WIDTH - FIRST_KERNEL_SIZE + 1) // 2 - SECOND_KERNEL_SIZE + 1) // 2
+        # fc1_h = ((HEIGHT - FIRST_KERNEL_SIZE + 1) // 2 - SECOND_KERNEL_SIZE + 1) // 2
+        # features = nn.Sequential(
+        #     nn.Conv2d(3, 6, FIRST_KERNEL_SIZE),
+        #     nn.ReLU(),
+        #     nn.MaxPool2d(2, 2),
+        #     nn.Conv2d(6, 16, SECOND_KERNEL_SIZE),
+        #     nn.ReLU(),
+        #     nn.MaxPool2d(2, 2),
+        #     nn.Flatten(),
+        #     nn.Linear(16 * fc1_w * fc1_h, 256),
+        #     nn.ReLU(),
+        #     # nn.Linear(1024, 256),
+        #     # nn.ReLU(),
+        # )
+        # return features, 256
 
-        model = vgg16(pretrained=True)
+        model = vgg16(weights=VGG16_Weights.DEFAULT)
 
         # remove the last ConvBRelu layer
         modules = [module for module in model.features]
@@ -63,6 +63,7 @@ class Net(nn.Module):
             *modules,
             nn.Flatten(),
             nn.Linear(in_features, 1024),
+            nn.BatchNorm1d(1024, momentum=0.99, eps=1e-3),
             nn.ReLU(inplace=True),
         )
 
@@ -70,4 +71,3 @@ class Net(nn.Module):
             param.requires_grad = True
 
         return features, 1024
-

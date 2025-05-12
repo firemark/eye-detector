@@ -25,7 +25,7 @@ class Eye3D:
 @dataclass
 class EyeCoords:
     image: np.ndarray
-    centroid: Optional[np.ndarray]
+    centroid: np.ndarray
     x: slice
     y: slice
 
@@ -66,14 +66,14 @@ class EnrichedModel(Model):
         )
 
 
-class NetModel:
+class NetModel[T]:
 
-    def __init__(self, net_path="outdata/net.pth"):
+    def __init__(self, net_cls: type[T], net_path="outdata/net.pth"):
         self.net_transform = get_transform()
-        self.net = self.load_net(net_path)
+        self.net = self.load_net(net_cls, net_path)
 
-    def load_net(self, net_path: str) -> Net:
-        net = Net()
+    def load_net(self, net_cls: type[T], net_path: str) -> T:
+        net = net_cls()
         state = torch.load(
             net_path,
             map_location=torch.device("cpu"),

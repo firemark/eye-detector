@@ -3,7 +3,8 @@ from sys import stderr
 from torch import FloatTensor
 
 from eye_detector.capture_dlib.models import EnrichedModel, NetModel, EyeCoords
-from eye_detector.train_gaze.dataset import HEIGHT, WIDTH
+from eye_detector.train_pupil.dataset import HEIGHT, WIDTH
+from eye_detector.train_pupil.model import Net
 from eye_detector.pupil_coords import EyeCoords as EyeCoordsPupil
 
 from .interface import Helper, Publishers, INetModel
@@ -11,12 +12,11 @@ from .utils import heading_to_rotation
 from .legacy import compute_face_normal, compute_eye_3d
 
 
-
 class PupilModel(INetModel):
 
     def __init__(self) -> None:
         self.model = EnrichedModel()
-        self.net_model = NetModel("outdata/net.pth")
+        self.net_model = NetModel(Net, "outdata/pupil.pth")
 
     def calc(self, color_frame, helper: Helper, publishers: Publishers):
         landmarks = self.model.detect_and_get_landmarks(color_frame)
@@ -40,7 +40,6 @@ class PupilModel(INetModel):
         eye = compute_eye_3d(helper.to_3d, normal, left) if left else None
 
         if eye:
-            print(eye.eye_xyz, file=stderr)
             face = heading_to_rotation(normal)
             q = heading_to_rotation(eye.direction)
 

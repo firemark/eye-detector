@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 
 import torch
 
-from eye_detector.train_pupil.dataset import create_dataset, WIDTH, HEIGHT
+from eye_detector.train_pupil.dataset import create_dataset
 from eye_detector.train_pupil.model import create_new_net
 from eye_detector.train_pupil.train import train
 from eye_detector.train_pupil.test import test_data
@@ -11,7 +11,7 @@ from eye_detector.train_pupil.test import test_data
 parser = ArgumentParser(description="Train gaze")
 parser.add_argument("--epoch", default=10, type=int)
 parser.add_argument("--size-ratio", default=1.0, type=float)
-parser.add_argument("--output", default="outdata/net.pth")
+parser.add_argument("--output", default="outdata/pupil.pth")
 
 
 def __save(net, output: str):

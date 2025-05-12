@@ -4,6 +4,7 @@ from torch import FloatTensor
 
 from eye_detector.capture_dlib.models import Eye3D, NetModel, EyeCoords, EnrichedModel
 from eye_detector.train_gaze.dataset import HEIGHT, WIDTH
+from eye_detector.train_gaze.model import Net
 
 from .interface import Helper, Publishers, INetModel
 from .utils import heading_to_rotation
@@ -14,7 +15,7 @@ class DefaultModel(INetModel):
 
     def __init__(self) -> None:
         self.model = EnrichedModel()
-        self.net_model = NetModel("outdata/net.pth")
+        self.net_model = NetModel(Net, "outdata/gaze.pth")
 
     def calc(self, color_frame, helper: Helper, publishers: Publishers):
         landmarks = self.model.detect_and_get_landmarks(color_frame)

@@ -44,7 +44,7 @@ class Net(nn.Module):
             nn.Flatten(),
             nn.Linear(16 * fc1_w * fc1_h, 80),
             nn.ReLU(),
-            nn.Dropout(0.2),
+            nn.Dropout(0.5),
             # nn.Linear(1024, 256),
             # nn.ReLU(),
         )

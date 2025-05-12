@@ -76,7 +76,7 @@ class Model:
         ll_p = landmarks.part(left_right_indexes[0])
         lr_p = landmarks.part(left_right_indexes[1])
 
-        size = (lr_p.x - ll_p.x) * 0.5
+        size = (lr_p.x - ll_p.x) * 0.7
         size_w = int(size) * 2
         size_h = int(size / 1.5) * 2
         #cx = (lr_p.x + ll_p.x) // 2

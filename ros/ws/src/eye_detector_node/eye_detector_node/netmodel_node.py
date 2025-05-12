@@ -14,6 +14,7 @@ from .netmodels.interface import INetModel, Helper, Publishers
 from .netmodels.default import DefaultModel
 from .netmodels.legacy import LegacyModel
 from .netmodels.dataset import DatasetModel
+from .netmodels.pupil import PupilModel
 
 
 class NetModelNode(Node):
@@ -35,6 +36,8 @@ class NetModelNode(Node):
                 self.model = DefaultModel()
             case "legacy":
                 self.model = LegacyModel()
+            case "pupil":
+                self.model = PupilModel()
             case "dataset_mpii":
                 self.model = DatasetModel(
                     dataset=MPIIIGazeDataset(root="indata/MPIIGaze")

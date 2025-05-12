@@ -1,24 +1,21 @@
 from glob import glob
 from pickle import load as pickle_load
 from random import shuffle
-from typing import List, Literal
+from typing import List
 from uuid import uuid4
-
 from PIL import Image
 from scipy.io import loadmat
 from scipy.spatial.transform import Rotation
 import numpy as np
 
-from torch.utils.data import Dataset, ConcatDataset, random_split
+from torch.utils.data import Dataset
 from torch import FloatTensor
 from torch.nn import Module, Sequential
 from torchvision import transforms
 import torch.jit
 
-WIDTH = 60
-HEIGHT = 40
-KEY_ROT_MATRIX = 0
-KEY_IMG = 1
+WIDTH = 30
+HEIGHT = 18
 
 
 def get_transform_components() -> List[Module]:
